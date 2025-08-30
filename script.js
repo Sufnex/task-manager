@@ -178,29 +178,30 @@ class AuthManager {
         }
     }
 
-    async logout() {
-    console.log('🚪 Kijelentkezés...');
-    
-    try {
-        // TaskManager listener-ek leállítása
-        if (window.taskManager) {
-            window.taskManager.cleanup();
-            window.taskManager = null;
-        }
+    async function logout() {
+        console.log('🚪 Kijelentkezés...');
         
-        // CollaborationManager cleanup
-        if (window.collaborationManager) {
-            window.collaborationManager = null;
+        try {
+            // TaskManager listener-ek leállítása
+            if (window.taskManager) {
+                window.taskManager.cleanup();
+                window.taskManager = null;
+            }
+            
+            // CollaborationManager cleanup
+            if (window.collaborationManager) {
+                window.collaborationManager = null;
+            }
+            
+            await signOut(auth);
+            notificationManager.show('Sikeres kijelentkezés! 👋', 'success');
+            console.log('✅ Kijelentkezés sikeres');
+        } catch (error) {
+            console.error('❌ Kijelentkezési hiba:', error);
+            notificationManager.show('Hiba a kijelentkezés során!', 'error');
         }
-        
-        await signOut(auth);
-        notificationManager.show('Sikeres kijelentkezés! 👋', 'success');
-        console.log('✅ Kijelentkezés sikeres');
-    } catch (error) {
-        console.error('❌ Kijelentkezési hiba:', error);
-        notificationManager.show('Hiba a kijelentkezés során!', 'error');
     }
-}
+
 
 
     getErrorMessage(errorCode) {
@@ -924,5 +925,6 @@ animationStyles.textContent = `
     }
 `;
 document.head.appendChild(animationStyles);
+
 
 
