@@ -1,53 +1,54 @@
-/* ===== TASK MANAGER SERVICE WORKER ===== */
+/* ===== TASK MANAGER PWA - SERVICE WORKER ===== */
 
-// Cache nevei és verziószám
-const CACHE_NAME = 'task-manager-v1.0.0';
-const DYNAMIC_CACHE = 'task-manager-dynamic-v1.0.0';
+const CACHE_NAME = 'task-manager-v1.2.0';
+const STATIC_CACHE_NAME = 'task-manager-static-v1.2.0';
+const DYNAMIC_CACHE_NAME = 'task-manager-dynamic-v1.2.0';
 
-// Statikus fájlok, amiket cache-elni akarunk
+// Statikus fájlok (csak létező fájlok!)
 const STATIC_FILES = [
   './',
   './index.html',
-  './style.css',
   './script.js',
-  './manifest.json',
-  './icons/icon-72.png',
-  './icons/icon-96.png',
-  './icons/icon-128.png',
-  './icons/icon-144.png',
-  './icons/icon-152.png',
-  './icons/icon-192.png',
-  './icons/icon-384.png',
-  './icons/icon-512.png'
+  './style.css',
+  './manifest.json'
 ];
 
-// Külső erőforrások, amiket cache-elünk
-const EXTERNAL_RESOURCES = [
-  'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap'
+// Dinamikus cache-elendő URL-ek
+const DYNAMIC_URLS = [
+  'https://www.gstatic.com/',
+  'https://task-manager-sb.firebaseapp.com/',
+  'https://firestore.googleapis.com/'
 ];
 
-/* ===== SERVICE WORKER TELEPÍTÉSE ===== */
+/* ===== INSTALL EVENT ===== */
 self.addEventListener('install', (event) => {
   console.log('Service Worker: Telepítés...');
   
   event.waitUntil(
-    caches.open(CACHE_NAME)
+    caches.open(STATIC_CACHE_NAME)
       .then((cache) => {
         console.log('Service Worker: Statikus fájlok cache-elése...');
-        // Statikus fájlok cache-elése
-        return cache.addAll(STATIC_FILES);
+        // Csak létező fájlokat cache-eljük
+        return Promise.allSettled(
+          STATIC_FILES.map(url => 
+            fetch(url)
+              .then(response => {
+                if (response.ok) {
+                  return cache.put(url, response);
+                } else {
+                  console.warn(`Service Worker: Nem található fájl: ${url}`);
+                  return Promise.resolve();
+                }
+              })
+              .catch(error => {
+                console.warn(`Service Worker: Hiba a fájl betöltésében: ${url}`, error);
+                return Promise.resolve();
+              })
+          )
+        );
       })
       .then(() => {
-        // Külső erőforrások cache-elése
-        return caches.open(DYNAMIC_CACHE);
-      })
-      .then((cache) => {
-        console.log('Service Worker: Külső erőforrások cache-elése...');
-        return cache.addAll(EXTERNAL_RESOURCES);
-      })
-      .then(() => {
-        console.log('Service Worker: Telepítés sikeres!');
-        // Azonnal aktiválás
+        console.log('Service Worker: Telepítés befejezve');
         return self.skipWaiting();
       })
       .catch((error) => {
@@ -56,32 +57,32 @@ self.addEventListener('install', (event) => {
   );
 });
 
-/* ===== SERVICE WORKER AKTIVÁLÁSA ===== */
+/* ===== ACTIVATE EVENT ===== */
 self.addEventListener('activate', (event) => {
   console.log('Service Worker: Aktiválás...');
   
   event.waitUntil(
-    Promise.all([
-      // Régi cache-ek törlése
-      caches.keys().then((cacheNames) => {
+    caches.keys()
+      .then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
-            if (cacheName !== CACHE_NAME && cacheName !== DYNAMIC_CACHE) {
+            if (cacheName !== STATIC_CACHE_NAME && 
+                cacheName !== DYNAMIC_CACHE_NAME &&
+                cacheName.startsWith('task-manager-')) {
               console.log('Service Worker: Régi cache törlése:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
-      }),
-      // Összes kliens átvétele
-      self.clients.claim()
-    ]).then(() => {
-      console.log('Service Worker: Aktiválás sikeres!');
-    })
+      })
+      .then(() => {
+        console.log('Service Worker: Aktiválás sikeres!');
+        return self.clients.claim();
+      })
   );
 });
 
-/* ===== FETCH ESEMÉNYKEZELŐ (CACHE STRATÉGIA) ===== */
+/* ===== FETCH EVENT ===== */
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -91,268 +92,168 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // Cache stratégia kiválasztása URL alapján
-  if (STATIC_FILES.includes(url.pathname) || url.pathname === '/') {
-    // Statikus fájlok: Cache First stratégia
-    event.respondWith(cacheFirst(request));
-  } else if (url.origin === location.origin) {
-    // Saját domain: Network First stratégia
-    event.respondWith(networkFirst(request));
-  } else {
-    // Külső erőforrások: Stale While Revalidate stratégia
-    event.respondWith(staleWhileRevalidate(request));
+  // Firebase API hívások - network first strategy
+  if (url.hostname.includes('firebaseapp.com') || 
+      url.hostname.includes('googleapis.com') ||
+      url.hostname.includes('gstatic.com')) {
+    
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          // Sikeres válasz cache-elése
+          if (response.ok) {
+            const responseClone = response.clone();
+            caches.open(DYNAMIC_CACHE_NAME)
+              .then((cache) => {
+                cache.put(request, responseClone);
+              });
+          }
+          return response;
+        })
+        .catch(() => {
+          // Offline fallback
+          return caches.match(request)
+            .then((response) => {
+              return response || new Response(
+                JSON.stringify({ error: 'Offline - nincs internetkapcsolat' }),
+                {
+                  status: 503,
+                  headers: { 'Content-Type': 'application/json' }
+                }
+              );
+            });
+        })
+    );
+    return;
+  }
+  
+  // Saját domainhez tartozó fájlok - cache first strategy
+  if (url.origin === location.origin) {
+    event.respondWith(
+      caches.match(request)
+        .then((response) => {
+          // Cache-ből visszaadás
+          if (response) {
+            return response;
+          }
+          
+          // Network-ről próbálkozás
+          return fetch(request)
+            .then((response) => {
+              // Csak 200-as válaszokat cache-elünk
+              if (response.ok) {
+                const responseClone = response.clone();
+                caches.open(STATIC_CACHE_NAME)
+                  .then((cache) => {
+                    cache.put(request, responseClone);
+                  });
+              }
+              return response;
+            })
+            .catch(() => {
+              // Offline fallback
+              if (request.destination === 'document') {
+                return caches.match('./index.html');
+              }
+              
+              // Egyéb erőforrások esetén üres válasz
+              return new Response('', {
+                status: 404,
+                statusText: 'Not Found'
+              });
+            });
+        })
+    );
   }
 });
 
-/* ===== CACHE STRATÉGIÁK ===== */
-
-// Cache First - először cache-ből, ha nincs, akkor hálózatból
-async function cacheFirst(request) {
-  try {
-    const cacheResponse = await caches.match(request);
-    if (cacheResponse) {
-      return cacheResponse;
-    }
-    
-    const networkResponse = await fetch(request);
-    if (networkResponse && networkResponse.status === 200) {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, networkResponse.clone());
-    }
-    return networkResponse;
-  } catch (error) {
-    console.error('Cache First hiba:', error);
-    return getOfflinePage();
+/* ===== BACKGROUND SYNC ===== */
+self.addEventListener('sync', (event) => {
+  console.log('Service Worker: Background sync:', event.tag);
+  
+  if (event.tag === 'background-sync-tasks') {
+    event.waitUntil(syncTasks());
   }
-}
+});
 
-// Network First - először hálózatból, ha nincs, akkor cache-ből
-async function networkFirst(request) {
+async function syncTasks() {
   try {
-    const networkResponse = await fetch(request);
-    if (networkResponse && networkResponse.status === 200) {
-      const cache = await caches.open(DYNAMIC_CACHE);
-      cache.put(request, networkResponse.clone());
-    }
-    return networkResponse;
-  } catch (error) {
-    console.log('Hálózat nem elérhető, cache-ből szolgálva:', request.url);
-    const cacheResponse = await caches.match(request);
-    return cacheResponse || getOfflinePage();
-  }
-}
-
-// Stale While Revalidate - cache-ből szolgál, háttérben frissít
-async function staleWhileRevalidate(request) {
-  try {
-    const cache = await caches.open(DYNAMIC_CACHE);
-    const cacheResponse = await cache.match(request);
+    console.log('Service Worker: Tasks szinkronizálás...');
     
-    // Háttérben frissítés
-    const fetchPromise = fetch(request).then((networkResponse) => {
-      if (networkResponse && networkResponse.status === 200) {
-        cache.put(request, networkResponse.clone());
-      }
-      return networkResponse;
-    }).catch(() => {
-      // Hálózati hiba esetén nem csinálunk semmit
+    // Itt lehetne implementálni az offline során mentett feladatok feltöltését
+    // A localStorage-ból vagy IndexedDB-ből
+    
+    const clients = await self.clients.matchAll();
+    clients.forEach(client => {
+      client.postMessage({
+        type: 'SYNC_COMPLETE',
+        message: 'Feladatok szinkronizálva! 🔄'
+      });
     });
     
-    // Cache-ből szolgálunk, vagy várunk a hálózatra
-    return cacheResponse || fetchPromise;
   } catch (error) {
-    console.error('Stale While Revalidate hiba:', error);
-    return getOfflinePage();
+    console.error('Service Worker: Sync hiba:', error);
   }
 }
 
-/* ===== OFFLINE OLDAL ===== */
-function getOfflinePage() {
-  return new Response(
-    `
-    <!DOCTYPE html>
-    <html lang="hu">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Offline - Task Manager</title>
-      <style>
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          margin: 0;
-          padding: 20px;
-          min-height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
-        }
-        .offline-container {
-          max-width: 400px;
-          padding: 40px;
-          background: rgba(255,255,255,0.1);
-          border-radius: 15px;
-          backdrop-filter: blur(10px);
-        }
-        .offline-icon {
-          font-size: 4rem;
-          margin-bottom: 20px;
-        }
-        h1 {
-          margin-bottom: 15px;
-          font-size: 1.8rem;
-        }
-        p {
-          margin-bottom: 25px;
-          opacity: 0.9;
-          line-height: 1.6;
-        }
-        .retry-btn {
-          background: #4CAF50;
-          color: white;
-          border: none;
-          padding: 12px 24px;
-          border-radius: 25px;
-          cursor: pointer;
-          font-size: 1rem;
-          transition: background 0.3s;
-        }
-        .retry-btn:hover {
-          background: #45a049;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="offline-container">
-        <div class="offline-icon">📴</div>
-        <h1>Offline módban vagy</h1>
-        <p>Nincs internetkapcsolat, de a Task Manager továbbra is használható offline módban!</p>
-        <button class="retry-btn" onclick="window.location.reload()">
-          🔄 Újrapróbálás
-        </button>
-      </div>
-    </body>
-    </html>
-    `,
-    {
-      headers: {
-        'Content-Type': 'text/html',
-      },
-    }
-  );
-}
-
-/* ===== HÁTTÉR SZINKRONIZÁLÁS ===== */
-self.addEventListener('sync', (event) => {
-  console.log('Service Worker: Háttér szinkronizálás:', event.tag);
-  
-  if (event.tag === 'background-sync') {
-    event.waitUntil(doBackgroundSync());
-  }
-});
-
-async function doBackgroundSync() {
-  try {
-    // Itt lehet implementálni a háttérben futó szinkronizálást
-    // például felhő alapú backup-ot
-    console.log('Háttér szinkronizálás végrehajtva');
-  } catch (error) {
-    console.error('Háttér szinkronizálási hiba:', error);
-  }
-}
-
-/* ===== PUSH NOTIFIKÁCIÓK ===== */
+/* ===== PUSH NOTIFICATIONS ===== */
 self.addEventListener('push', (event) => {
   console.log('Service Worker: Push üzenet érkezett');
   
-  let data = {};
-  if (event.data) {
-    data = event.data.json();
-  }
-  
   const options = {
-    body: data.body || 'Új értesítés a Task Manager-ből',
-    icon: './icons/icon-192.png',
-    badge: './icons/icon-96.png',
-    tag: 'task-manager-notification',
-    renotify: true,
-    requireInteraction: true,
+    body: event.data ? event.data.text() : 'Új értesítés érkezett!',
+    icon: './icons/icon-192x192.png',
+    badge: './icons/icon-96x96.png',
+    vibrate: [100, 50, 100],
+    data: {
+      dateOfArrival: Date.now(),
+      primaryKey: 1
+    },
     actions: [
       {
-        action: 'open',
+        action: 'explore',
         title: 'Megnyitás',
-        icon: './icons/icon-96.png'
+        icon: './icons/icon-32x32.png'
       },
       {
         action: 'close',
-        title: 'Bezárás'
+        title: 'Bezárás',
+        icon: './icons/icon-32x32.png'
       }
-    ],
-    data: {
-      url: data.url || './'
-    }
+    ]
   };
   
   event.waitUntil(
-    self.registration.showNotification(
-      data.title || 'Task Manager',
-      options
-    )
+    self.registration.showNotification('Task Manager', options)
   );
 });
 
-/* ===== NOTIFIKÁCIÓ KATTINTÁS ===== */
+/* ===== NOTIFICATION CLICK ===== */
 self.addEventListener('notificationclick', (event) => {
-  console.log('Service Worker: Notifikáció kattintás');
+  console.log('Service Worker: Notification click');
   
   event.notification.close();
   
-  if (event.action === 'open') {
+  if (event.action === 'explore') {
     event.waitUntil(
-      clients.openWindow(event.notification.data.url || './')
+      self.clients.openWindow('./')
     );
   }
 });
 
-/* ===== PERIODIC BACKGROUND SYNC ===== */
-self.addEventListener('periodicsync', (event) => {
-  console.log('Service Worker: Periodikus szinkronizálás:', event.tag);
-  
-  if (event.tag === 'daily-backup') {
-    event.waitUntil(performDailyBackup());
-  }
-});
-
-async function performDailyBackup() {
-  try {
-    // Napi automatikus backup funkció
-    console.log('Napi backup végrehajtva');
-  } catch (error) {
-    console.error('Napi backup hiba:', error);
-  }
-}
-
-/* ===== CACHE MÉRET KEZELÉS ===== */
-async function cleanOldCaches() {
-  const cacheNames = await caches.keys();
-  const dynamicCache = await caches.open(DYNAMIC_CACHE);
-  const requests = await dynamicCache.keys();
-  
-  // Ha túl sok cache elem van, töröljük a régieket
-  if (requests.length > 50) {
-    const oldRequests = requests.slice(0, 10);
-    await Promise.all(
-      oldRequests.map(request => dynamicCache.delete(request))
-    );
-    console.log('Service Worker: Régi cache elemek törölve');
-  }
-}
-
-// Cache tisztítás rendszeres futtatása
+/* ===== MESSAGE HANDLING ===== */
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'CLEAN_CACHE') {
-    event.waitUntil(cleanOldCaches());
+  console.log('Service Worker: Üzenet érkezett:', event.data);
+  
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+  
+  if (event.data && event.data.type === 'GET_VERSION') {
+    event.ports[0].postMessage({
+      version: CACHE_NAME
+    });
   }
 });
+
+console.log('Service Worker: Betöltve és kész! ✅');
