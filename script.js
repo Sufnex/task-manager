@@ -18,14 +18,12 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
-
 console.log('✅ Firebase inicializálva:', app);
 
 // Globális változók
 let taskManager = null;
 let collaborationManager = null;
 
-// AuthManager osztály
 // AuthManager osztály
 class AuthManager {
     constructor() {
@@ -38,21 +36,43 @@ class AuthManager {
     initializeElements() {
         console.log('📋 Auth elemek inicializálása...');
         this.elements = {
-            authModal: document.getElementById('authModal'),
-            loginBtn: document.getElementById('loginBtn'),
-            logoutBtn: document.getElementById('logoutBtn'),
-            userInfo: document.getElementById('userInfo'),
-            userName: document.getElementById('userName'),
-            userEmail: document.getElementById('userEmail'),
-            app: document.getElementById('app')
+            authModal: document.getElementById('auth-modal'),
+            loginBtn: document.getElementById('google-signin'),
+            logoutBtn: document.getElementById('logout-btn'),
+            userInfo: document.getElementById('user-info'),
+            userName: document.getElementById('user-name'),
+            userEmail: document.getElementById('user-email'),
+            app: document.getElementById('main-app')
         };
-        console.log('✅ Auth elemek megtalálva');
+
+        // DEBUG: Ellenőrizzük melyik elem hiányzik
+        Object.keys(this.elements).forEach(key => {
+            if (!this.elements[key]) {
+                console.error(`❌ Hiányzó DOM elem: ${key}`);
+            } else {
+                console.log(`✅ DOM elem megtalálva: ${key}`);
+            }
+        });
+        console.log('✅ Auth elemek ellenőrzése kész');
     }
 
     setupEventListeners() {
         console.log('👂 Auth event listener-ek beállítása...');
-        this.elements.loginBtn.addEventListener('click', () => this.signInWithGoogle());
-        this.elements.logoutBtn.addEventListener('click', () => this.logout());
+        
+        if (this.elements.loginBtn) {
+            this.elements.loginBtn.addEventListener('click', () => this.signInWithGoogle());
+            console.log('✅ Login button listener hozzáadva');
+        } else {
+            console.error('❌ loginBtn nem található!');
+        }
+        
+        if (this.elements.logoutBtn) {
+            this.elements.logoutBtn.addEventListener('click', () => this.logout());
+            console.log('✅ Logout button listener hozzáadva');
+        } else {
+            console.error('❌ logoutBtn nem található!');
+        }
+        
         console.log('✅ Auth event listener-ek beállítva');
     }
 
@@ -98,15 +118,23 @@ class AuthManager {
     }
 
     updateUI(user) {
-        this.elements.userName.textContent = user.displayName || 'Felhasználó';
-        this.elements.userEmail.textContent = user.email;
-        this.elements.userInfo.style.display = 'flex';
-        this.elements.logoutBtn.style.display = 'block';
+        if (this.elements.userName) {
+            this.elements.userName.textContent = user.displayName || 'Felhasználó';
+        }
+        if (this.elements.userEmail) {
+            this.elements.userEmail.textContent = user.email;
+        }
+        if (this.elements.userInfo) {
+            this.elements.userInfo.style.display = 'flex';
+        }
+        if (this.elements.logoutBtn) {
+            this.elements.logoutBtn.style.display = 'block';
+        }
     }
 
     initializeManagers(user) {
         console.log('🚀 TaskManager inicializálás...');
-        console.log('👤 User objektum:', user.uid, user.email); // DEBUG
+        console.log('👤 User objektum:', user.uid, user.email);
         window.taskManager = new TaskManager(user.uid, user.email);
         window.collaborationManager = new CollaborationManager(user.uid, user.email);
     }
@@ -114,23 +142,37 @@ class AuthManager {
     handleUserLogout() {
         this.hideApp();
         this.showAuthModal();
-        this.elements.userInfo.style.display = 'none';
-        this.elements.logoutBtn.style.display = 'none';
+        if (this.elements.userInfo) {
+            this.elements.userInfo.style.display = 'none';
+        }
+        if (this.elements.logoutBtn) {
+            this.elements.logoutBtn.style.display = 'none';
+        }
     }
 
     showApp() {
         console.log('📱 Alkalmazás megjelenítése');
-        this.elements.app.style.display = 'block';
-        this.elements.authModal.style.display = 'none';
+        if (this.elements.app) {
+            this.elements.app.style.display = 'block';
+            this.elements.app.classList.remove('hidden');
+        }
+        if (this.elements.authModal) {
+            this.elements.authModal.style.display = 'none';
+        }
     }
 
     hideApp() {
-        this.elements.app.style.display = 'none';
+        if (this.elements.app) {
+            this.elements.app.style.display = 'none';
+            this.elements.app.classList.add('hidden');
+        }
     }
 
     showAuthModal() {
         console.log('🔓 Auth modal megjelenítése');
-        this.elements.authModal.style.display = 'flex';
+        if (this.elements.authModal) {
+            this.elements.authModal.style.display = 'flex';
+        }
     }
 
     async signInWithGoogle() {
@@ -153,12 +195,10 @@ class AuthManager {
                 window.taskManager.cleanup();
                 window.taskManager = null;
             }
-            
             // CollaborationManager cleanup
             if (window.collaborationManager) {
                 window.collaborationManager = null;
             }
-            
             await signOut(auth);
             notificationManager.show('Sikeres kijelentkezés! 👋', 'success');
             console.log('✅ Kijelentkezés sikeres');
@@ -168,7 +208,6 @@ class AuthManager {
         }
     }
 }
-
 
 // NotificationManager osztály
 class NotificationManager {
@@ -211,15 +250,14 @@ class NotificationManager {
             font-size: 14px;
             line-height: 1.4;
         `;
-        
         notification.textContent = message;
         this.container.appendChild(notification);
-        
+
         setTimeout(() => {
             notification.style.opacity = '1';
             notification.style.transform = 'translateX(0)';
         }, 100);
-        
+
         setTimeout(() => {
             notification.style.opacity = '0';
             notification.style.transform = 'translateX(100%)';
@@ -254,20 +292,29 @@ class CollaborationManager {
     initializeElements() {
         console.log('📋 Collaboration elemek inicializálása...');
         this.elements = {
-            shareModal: document.getElementById('shareModal'),
-            closeShareModal: document.querySelector('#shareModal .close'),
-            shareTaskForm: document.getElementById('shareTaskForm'),
-            collaboratorEmail: document.getElementById('collaboratorEmail'),
-            sharePermissions: document.getElementById('sharePermissions')
+            shareModal: document.getElementById('share-modal'),
+            closeShareModal: document.querySelector('#share-modal .close-modal'),
+            shareBtn: document.getElementById('share-btn'),
+            shareEmail: document.getElementById('share-email'),
+            openShareBtn: document.getElementById('open-share')
         };
         this.setupEventListeners();
         console.log('✅ Collaboration elemek beállítva');
     }
 
     setupEventListeners() {
-        this.elements.closeShareModal?.addEventListener('click', () => this.hideShareModal());
-        this.elements.shareTaskForm?.addEventListener('submit', (e) => this.handleShare(e));
+        if (this.elements.closeShareModal) {
+            this.elements.closeShareModal.addEventListener('click', () => this.hideShareModal());
+        }
         
+        if (this.elements.shareBtn) {
+            this.elements.shareBtn.addEventListener('click', (e) => this.handleShare(e));
+        }
+        
+        if (this.elements.openShareBtn) {
+            this.elements.openShareBtn.addEventListener('click', () => this.showShareModal());
+        }
+
         window.addEventListener('click', (e) => {
             if (e.target === this.elements.shareModal) {
                 this.hideShareModal();
@@ -275,54 +322,57 @@ class CollaborationManager {
         });
     }
 
-    showShareModal(taskId) {
-        this.currentTaskId = taskId;
-        this.elements.shareModal.style.display = 'block';
+    showShareModal() {
+        if (this.elements.shareModal) {
+            this.elements.shareModal.style.display = 'block';
+            this.elements.shareModal.classList.remove('hidden');
+        }
     }
 
     hideShareModal() {
-        this.elements.shareModal.style.display = 'none';
-        this.currentTaskId = null;
-        this.elements.shareTaskForm?.reset();
+        if (this.elements.shareModal) {
+            this.elements.shareModal.style.display = 'none';
+            this.elements.shareModal.classList.add('hidden');
+        }
+        if (this.elements.shareEmail) {
+            this.elements.shareEmail.value = '';
+        }
     }
 
     async handleShare(e) {
         e.preventDefault();
         
-        const collaboratorEmail = this.elements.collaboratorEmail.value.trim();
-        const permissions = this.elements.sharePermissions.value;
+        if (!this.elements.shareEmail) {
+            notificationManager.show('Email mező nem található!', 'error');
+            return;
+        }
         
+        const collaboratorEmail = this.elements.shareEmail.value.trim();
+
         if (!collaboratorEmail) {
             notificationManager.show('Az email cím megadása kötelező!', 'error');
             return;
         }
-        
+
         if (collaboratorEmail === this.userEmail) {
             notificationManager.show('Nem oszthatod meg magaddal a feladatot!', 'error');
             return;
         }
-        
+
         try {
             await addDoc(collection(db, 'collaborations'), {
-                taskId: this.currentTaskId,
                 ownerId: this.userId,
                 ownerEmail: this.userEmail,
                 collaboratorEmail,
-                permissions,
                 createdAt: new Date(),
-                status: 'pending'
+                status: 'active'
             });
-            
-            await updateDoc(doc(db, 'tasks', this.currentTaskId), {
-                isShared: true,
-                updatedAt: new Date()
-            });
-            
-            notificationManager.show(`Feladat megosztva ${collaboratorEmail} címmel! 📤`, 'success');
+
+            notificationManager.show(`Partnerkapcsolat létrehozva ${collaboratorEmail} címmel! 🤝`, 'success');
             this.hideShareModal();
         } catch (error) {
             console.error('❌ Megosztási hiba:', error);
-            notificationManager.show('Hiba a feladat megosztása során!', 'error');
+            notificationManager.show('Hiba a partnerkapcsolat létrehozása során!', 'error');
         }
     }
 }
@@ -355,47 +405,63 @@ class TaskManager {
     initializeDOM() {
         console.log('📋 DOM elemek inicializálása...');
         this.elements = {
-            addTaskBtn: document.getElementById('addTaskBtn'),
-            taskForm: document.getElementById('taskForm'),
-            taskModal: document.getElementById('taskModal'),
-            closeModal: document.querySelector('#taskModal .close'),
-            submitTaskBtn: document.getElementById('submitTaskBtn'),
-            taskTitle: document.getElementById('taskTitle'),
-            taskDescription: document.getElementById('taskDescription'),
-            taskPriority: document.getElementById('taskPriority'),
-            taskCategory: document.getElementById('taskCategory'),
-            tasksList: document.getElementById('tasksList'),
+            addTaskBtn: document.getElementById('add-task-btn'),
+            taskForm: document.getElementById('task-form'),
+            taskModal: document.getElementById('task-modal'),
+            closeModal: document.querySelector('#task-modal .close-modal'),
+            submitTaskBtn: document.querySelector('#task-form button[type="submit"]'),
+            cancelTaskBtn: document.getElementById('cancel-task'),
+            taskTitle: document.getElementById('task-title'),
+            taskDescription: document.getElementById('task-description'),
+            taskPriority: document.getElementById('task-priority'),
+            taskCategory: document.getElementById('task-category'),
+            tasksList: document.getElementById('list-view'),
             filterBtns: document.querySelectorAll('.filter-btn'),
-            searchInput: document.getElementById('searchInput'),
-            totalTasks: document.getElementById('totalTasks'),
-            completedTasks: document.getElementById('completedTasks'),
-            pendingTasks: document.getElementById('pendingTasks')
+            searchInput: document.getElementById('search-input'),
+            totalTasks: document.getElementById('total-tasks'),
+            completedTasks: document.getElementById('completed-tasks'),
+            pendingTasks: document.getElementById('pending-tasks')
         };
-    
+
         // DEBUG: Ellenőrizzük melyik elem hiányzik
         Object.keys(this.elements).forEach(key => {
             if (!this.elements[key] || (this.elements[key].length === 0)) {
                 console.error(`❌ Hiányzó DOM elem: ${key}`);
+            } else {
+                console.log(`✅ DOM elem megtalálva: ${key}`);
             }
         });
-    
+
         if (!this.elements.addTaskBtn || !this.elements.tasksList) {
             console.error('❌ Kritikus DOM elemek hiányoznak!');
             throw new Error('Hiányzó DOM elemek');
         }
-        
         console.log('✅ DOM elemek megtalálva');
     }
-
 
     setupEventListeners() {
         console.log('👂 Event listener-ek beállítása...');
         
-        this.elements.addTaskBtn.addEventListener('click', () => this.showTaskModal());
-        this.elements.closeModal.addEventListener('click', () => this.hideTaskModal());
-        this.elements.taskForm.addEventListener('submit', (e) => this.handleTaskSubmit(e));
-        this.elements.searchInput.addEventListener('input', (e) => this.handleSearch(e.target.value));
+        if (this.elements.addTaskBtn) {
+            this.elements.addTaskBtn.addEventListener('click', () => this.showTaskModal());
+        }
         
+        if (this.elements.closeModal) {
+            this.elements.closeModal.addEventListener('click', () => this.hideTaskModal());
+        }
+        
+        if (this.elements.cancelTaskBtn) {
+            this.elements.cancelTaskBtn.addEventListener('click', () => this.hideTaskModal());
+        }
+        
+        if (this.elements.taskForm) {
+            this.elements.taskForm.addEventListener('submit', (e) => this.handleTaskSubmit(e));
+        }
+        
+        if (this.elements.searchInput) {
+            this.elements.searchInput.addEventListener('input', (e) => this.handleSearch(e.target.value));
+        }
+
         this.elements.filterBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 this.elements.filterBtns.forEach(b => b.classList.remove('active'));
@@ -410,14 +476,14 @@ class TaskManager {
                 this.hideTaskModal();
             }
         });
-        
+
         console.log('✅ Event listener-ek beállítva');
     }
 
     setupFirebaseListeners() {
         console.log('🔥 Firebase listener-ek beállítása...');
-        
         console.log('👀 Saját feladatok figyelése...');
+        
         const tasksQuery = query(
             collection(db, 'tasks'),
             where('userId', '==', this.userId),
@@ -459,10 +525,9 @@ class TaskManager {
                 collection(db, 'collaborations'),
                 where('collaboratorEmail', '==', this.userEmail)
             );
-            
             const collaborationsSnapshot = await getDocs(collaborationsQuery);
             console.log(`🤝 ${collaborationsSnapshot.docs.length} kollaboráció találva`);
-            
+
             for (const collabDoc of collaborationsSnapshot.docs) {
                 const collaboration = collabDoc.data();
                 const sharedTasksQuery = query(
@@ -470,7 +535,6 @@ class TaskManager {
                     where('userId', '==', collaboration.ownerId),
                     where('isShared', '==', true)
                 );
-                
                 const sharedTasksSnapshot = await getDocs(sharedTasksQuery);
                 this.handleTasksSnapshot(sharedTasksSnapshot, 'shared', collaboration.ownerId);
             }
@@ -511,17 +575,27 @@ class TaskManager {
             this.elements.taskDescription.value = task.description || '';
             this.elements.taskPriority.value = task.priority || 'medium';
             this.elements.taskCategory.value = task.category || 'personal';
-            this.elements.submitTaskBtn.textContent = 'Feladat frissítése';
+            if (this.elements.submitTaskBtn) {
+                this.elements.submitTaskBtn.textContent = '💾 Frissítés';
+            }
         } else {
             this.elements.taskForm.reset();
-            this.elements.submitTaskBtn.textContent = 'Feladat létrehozása';
+            if (this.elements.submitTaskBtn) {
+                this.elements.submitTaskBtn.textContent = '💾 Mentés';
+            }
         }
         
-        this.elements.taskModal.style.display = 'block';
+        if (this.elements.taskModal) {
+            this.elements.taskModal.style.display = 'block';
+            this.elements.taskModal.classList.remove('hidden');
+        }
     }
 
     hideTaskModal() {
-        this.elements.taskModal.style.display = 'none';
+        if (this.elements.taskModal) {
+            this.elements.taskModal.style.display = 'none';
+            this.elements.taskModal.classList.add('hidden');
+        }
         this.currentEditingTask = null;
     }
 
@@ -554,7 +628,6 @@ class TaskManager {
                 await addDoc(collection(db, 'tasks'), taskData);
                 notificationManager.show('Feladat sikeresen létrehozva! ✅', 'success');
             }
-            
             this.hideTaskModal();
         } catch (error) {
             console.error('❌ Feladat mentési hiba:', error);
@@ -568,7 +641,6 @@ class TaskManager {
                 completed: !currentStatus,
                 updatedAt: new Date()
             });
-            
             const message = !currentStatus ? 'Feladat befejezve! 🎉' : 'Feladat újra megnyitva! 🔄';
             notificationManager.show(message, 'success');
         } catch (error) {
@@ -581,7 +653,6 @@ class TaskManager {
         if (!confirm('Biztosan törölni szeretnéd ezt a feladatot?')) {
             return;
         }
-
         try {
             await deleteDoc(doc(db, 'tasks', taskId));
             notificationManager.show('Feladat sikeresen törölve! 🗑️', 'success');
@@ -603,12 +674,14 @@ class TaskManager {
             filtered = filtered.filter(task => {
                 if (this.currentFilter === 'completed') return task.completed;
                 if (this.currentFilter === 'pending') return !task.completed;
+                if (this.currentFilter === 'shared') return task.type === 'shared';
+                if (this.currentFilter === 'private') return task.type === 'own';
                 return task.category === this.currentFilter;
             });
         }
 
         if (this.searchTerm) {
-            filtered = filtered.filter(task => 
+            filtered = filtered.filter(task =>
                 task.title.toLowerCase().includes(this.searchTerm) ||
                 (task.description && task.description.toLowerCase().includes(this.searchTerm))
             );
@@ -644,11 +717,8 @@ class TaskManager {
                     </div>
                     ${task.description ? `<p class="task-description">${this.escapeHtml(task.description)}</p>` : ''}
                     <div class="task-footer">
-                        <small class="task-date">
-                            Létrehozva: ${this.formatDate(task.createdAt)}
-                            ${task.updatedAt && task.updatedAt.toDate() > task.createdAt.toDate() ? 
-                                ` • Frissítve: ${this.formatDate(task.updatedAt)}` : ''}
-                        </small>
+                        <small class="task-date">Létrehozva: ${this.formatDate(task.createdAt)}${task.updatedAt && task.updatedAt.toDate() > task.createdAt.toDate() ?
+                ` • Frissítve: ${this.formatDate(task.updatedAt)}` : ''}</small>
                     </div>
                 </div>
                 <div class="task-actions">
@@ -661,9 +731,6 @@ class TaskManager {
                         <button class="btn-icon edit-btn" 
                                 onclick="taskManager.showTaskModal(${JSON.stringify(task).replace(/"/g, '&quot;')})" 
                                 title="Szerkesztés">✏️</button>
-                        <button class="btn-icon share-btn" 
-                                onclick="collaborationManager.showShareModal('${task.id}')" 
-                                title="Megosztás">👥</button>
                         <button class="btn-icon delete-btn" 
                                 onclick="taskManager.deleteTask('${task.id}')" 
                                 title="Törlés">🗑️</button>
@@ -678,9 +745,15 @@ class TaskManager {
         const completed = this.tasks.filter(task => task.completed).length;
         const pending = total - completed;
 
-        this.elements.totalTasks.textContent = total;
-        this.elements.completedTasks.textContent = completed;
-        this.elements.pendingTasks.textContent = pending;
+        if (this.elements.totalTasks) {
+            this.elements.totalTasks.textContent = total;
+        }
+        if (this.elements.completedTasks) {
+            this.elements.completedTasks.textContent = completed;
+        }
+        if (this.elements.pendingTasks) {
+            this.elements.pendingTasks.textContent = pending;
+        }
 
         console.log(`📊 Statisztika frissítés: {totalTasks: ${total}, completedTasks: ${completed}, pendingTasks: ${pending}}`);
     }
@@ -704,7 +777,8 @@ class TaskManager {
         const priorities = {
             low: 'Alacsony',
             medium: 'Közepes',
-            high: 'Magas'
+            high: 'Magas',
+            urgent: 'Sürgős'
         };
         return priorities[priority] || 'Közepes';
     }
@@ -715,7 +789,6 @@ class TaskManager {
             personal: 'Személyes',
             shopping: 'Bevásárlás',
             health: 'Egészség',
-            education: 'Tanulás',
             other: 'Egyéb'
         };
         return categories[category] || 'Egyéb';
@@ -767,13 +840,13 @@ class PWAInstallManager {
 
         this.deferredPrompt.prompt();
         const { outcome } = await this.deferredPrompt.userChoice;
-        
+
         if (outcome === 'accepted') {
             console.log('✅ PWA telepítés elfogadva');
         } else {
             console.log('❌ PWA telepítés elutasítva');
         }
-        
+
         this.deferredPrompt = null;
     }
 }
@@ -784,7 +857,7 @@ async function registerServiceWorker() {
         try {
             const registration = await navigator.serviceWorker.register('./sw.js');
             console.log('✅ SW registered: ', registration);
-            
+
             // Frissítés kezelése
             registration.addEventListener('updatefound', () => {
                 const newWorker = registration.installing;
@@ -816,4 +889,3 @@ document.addEventListener('DOMContentLoaded', () => {
     
     console.log('🚀 Multi-User Task Manager betöltve!');
 });
-
