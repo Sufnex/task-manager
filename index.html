@@ -1,469 +1,453 @@
 <!DOCTYPE html>
 <html lang="hu">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Task Manager PWA - Collaborative Task Management with Firebase">
-<meta name="keywords" content="task manager, todo, collaboration, firebase, pwa">
-<meta name="author" content="Task Manager App">
-
-<!-- Theme colors -->
-<meta name="theme-color" content="#2196F3">
-<meta name="msapplication-navbutton-color" content="#2196F3">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
-<!-- PWA Meta tags -->
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Task Manager">
-<meta name="application-name" content="Task Manager">
-
-<!-- Open Graph Meta Tags -->
-<meta property="og:title" content="Task Manager - Collaborative Todo App">
-<meta property="og:description" content="Modern task management with real-time collaboration">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://sufnex.github.io/task-manager/">
-<meta property="og:image" content="https://sufnex.github.io/task-manager/icons/icon-512x512.png">
-
-<!-- Twitter Card Meta Tags -->
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Task Manager - Collaborative Todo App">
-<meta name="twitter:description" content="Modern task management with real-time collaboration">
-<meta name="twitter:image" content="https://sufnex.github.io/task-manager/icons/icon-512x512.png">
-
-<!-- Security Headers (csak ezeket hagyd meg) -->
-<meta http-equiv="X-Content-Type-Options" content="nosniff">
-<meta http-equiv="X-XSS-Protection" content="1; mode=block">
-
-<title>Task Manager - Collaborative PWA</title>
-
-<!-- PWA Manifest -->
-<link rel="manifest" href="./manifest.json">
-
-<!-- Simplified Icons (SVG alapú) -->
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggc3Ryb2tlPSIjMjE5NkYzIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgZD0iTTkgMTFsMy0zIDQgNCIvPgo8cGF0aCBzdHJva2U9IiMyMTk2RjMiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBkPSJNMjEgMTJjMCA0Ljk3MDYtNC4wMjk0IDktOSA5cy05LTQuMDI5NC05LTkgNC4wMjk0LTkgOS05IDkgNC4wMjk0IDkgOVoiLz4KPC9wYXRoPgo8L3N2Zz4K">
-
-<!-- Styles -->
-<link rel="stylesheet" href="./style.css">
-
-<!-- Preconnect to Firebase -->
-<link rel="preconnect" href="https://www.gstatic.com">
-<link rel="preconnect" href="https://task-manager-sb.firebaseapp.com">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Task Manager PWA - Collaborative Task Management with Firebase">
+    <meta name="keywords" content="task manager, todo, collaboration, firebase, pwa">
+    <meta name="author" content="Task Manager App">
+    
+    <!-- Theme colors -->
+    <meta name="theme-color" content="#2196F3">
+    <meta name="msapplication-navbutton-color" content="#2196F3">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- PWA Meta tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Task Manager">
+    <meta name="application-name" content="Task Manager">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Task Manager - Collaborative Todo App">
+    <meta property="og:description" content="Modern task management with real-time collaboration">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://sufnex.github.io/task-manager/">
+    <meta property="og:image" content="https://sufnex.github.io/task-manager/icons/icon-512x512.png">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Task Manager - Collaborative Todo App">
+    <meta name="twitter:description" content="Modern task management with real-time collaboration">
+    <meta name="twitter:image" content="https://sufnex.github.io/task-manager/icons/icon-512x512.png">
+    
+    <!-- Security Headers (csak ezeket hagyd meg) -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    
+    <title>Task Manager - Collaborative PWA</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="./manifest.json">
+    
+    <!-- Simplified Icons (SVG alapú) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggc3Ryb2tlPSIjMjE5NkYzIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgZD0iTTkgMTFsMy0zIDQgNCIvPgo8cGF0aCBzdHJva2U9IiMyMTk2RjMiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBkPSJNMjEgMTJjMCA0Ljk3MDYtNC4wMjk0IDktOSA5cy05LTQuMDI5NC05LTkgNC4wMjk0LTkgOS05IDkgNC4wMjk0IDkgOVoiLz4KPC9wYXRoPgo8L3N2Zz4K">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="./style.css">
+    
+    <!-- Preconnect to Firebase -->
+    <link rel="preconnect" href="https://www.gstatic.com">
+    <link rel="preconnect" href="https://task-manager-sb.firebaseapp.com">
 </head>
-
 <body>
-<!-- Connection Indicator -->
-<div id="connection-indicator" class="hidden">
-  <span id="connection-text">🌐 Online</span>
-</div>
-
-<!-- ===== AUTHENTICATION MODAL ===== -->
-<div id="auth-modal" class="modal">
-  <div class="auth-container">
-    <h1>🚀 Task Manager</h1>
-    <p style="color: var(--text-secondary); margin-bottom: 24px;">
-      Collaborative task management with real-time sync
-    </p>
-
-    <!-- Bejelentkezés Form -->
-    <form id="login-form" class="auth-form">
-      <h2>Bejelentkezés</h2>
-      <div class="form-group">
-        <input 
-          type="email" 
-          id="login-email" 
-          placeholder="Email cím" 
-          required 
-          autocomplete="email"
-        >
-      </div>
-      <div class="form-group">
-        <input 
-          type="password" 
-          id="login-password" 
-          placeholder="Jelszó" 
-          required 
-          autocomplete="current-password" 
-          minlength="6"
-        >
-      </div>
-      <button type="submit" class="btn-primary">🔑 Bejelentkezés</button>
-      <button type="button" id="google-signin" class="btn-google">
-        🌐 Google bejelentkezés
-      </button>
-      <p>
-        Nincs még fiókod?
-        <a href="#" id="show-register">Regisztráció</a>
-      </p>
-    </form>
-
-    <!-- Regisztráció Form -->
-    <form id="register-form" class="auth-form hidden">
-      <h2>Regisztráció</h2>
-      <div class="form-group">
-        <input 
-          type="text" 
-          id="register-name" 
-          placeholder="Teljes név" 
-          required 
-          autocomplete="name"
-        >
-      </div>
-      <div class="form-group">
-        <input 
-          type="email" 
-          id="register-email" 
-          placeholder="Email cím" 
-          required 
-          autocomplete="email"
-        >
-      </div>
-      <div class="form-group">
-        <input 
-          type="password" 
-          id="register-password" 
-          placeholder="Jelszó (min. 6 karakter)" 
-          required 
-          autocomplete="new-password" 
-          minlength="6"
-        >
-      </div>
-      <button type="submit" class="btn-primary">✨ Regisztráció</button>
-      <p>
-        Van már fiókod?
-        <a href="#" id="show-login">Bejelentkezés</a>
-      </p>
-    </form>
-  </div>
-</div>
-
-<!-- ===== FŐ ALKALMAZÁS ===== -->
-<div id="main-app" class="hidden">
-  <!-- Header -->
-  <header class="header">
-    <h1>📋 Task Manager</h1>
-    <div class="header-controls">
-      <div id="user-info">
-        <span>👤</span>
-        <span id="user-name">Felhasználó</span>
-      </div>
-      <button 
-        id="open-share" 
-        class="btn-icon" 
-        title="Feladatok megosztása" 
-        aria-label="Feladatok megosztása"
-      >👥</button>
-      <button 
-        id="add-task-btn" 
-        class="btn-icon" 
-        title="Új feladat hozzáadása" 
-        aria-label="Új feladat hozzáadása"
-      >➕</button>
-      <button 
-        id="view-toggle" 
-        class="btn-icon" 
-        title="Nézet váltás" 
-        aria-label="Nézet váltás"
-      >📅</button>
-      <button 
-        id="logout-btn" 
-        class="btn-icon" 
-        title="Kijelentkezés" 
-        aria-label="Kijelentkezés"
-      >🚪</button>
+    <!-- Connection Indicator -->
+    <div id="connection-indicator" class="hidden">
+        <span id="connection-text">🌐 Online</span>
     </div>
-  </header>
 
-  <main class="main-content">
-    <!-- Szűrők és keresés -->
-    <section class="filters" aria-labelledby="filters-heading">
-      <h2 id="filters-heading" style="display: none;">Szűrők és keresés</h2>
-      <div class="search-box">
-        <input
-          type="text"
-          id="search-input"
-          placeholder="🔍 Keresés a feladatok között..."
-          aria-label="Keresés a feladatok között"
-        >
-      </div>
-      <div class="filter-buttons" role="tablist" aria-label="Feladat szűrők">
-        <button class="filter-btn active" data-filter="all" role="tab" aria-selected="true">
-          📋 Összes
-        </button>
-        <button class="filter-btn" data-filter="pending" role="tab" aria-selected="false">
-          ⏳ Folyamatban
-        </button>
-        <button class="filter-btn" data-filter="completed" role="tab" aria-selected="false">
-          ✅ Befejezett
-        </button>
-        <button class="filter-btn" data-filter="shared" role="tab" aria-selected="false">
-          👥 Megosztott
-        </button>
-        <button class="filter-btn" data-filter="private" role="tab" aria-selected="false">
-          🔒 Privát
-        </button>
-      </div>
-    </section>
-
-    <!-- Feladat lista -->
-    <section class="task-section" aria-labelledby="tasks-heading">
-      <h2 id="tasks-heading" style="display: none;">Feladatok listája</h2>
-      <div id="list-view" class="task-container" role="list" aria-live="polite">
-        <!-- A feladatok dinamikusan betöltődnek ide -->
-      </div>
-    </section>
-
-    <!-- Statisztikák -->
-    <aside class="stats-panel" aria-labelledby="stats-heading">
-      <h3 id="stats-heading">📊 Statisztikák</h3>
-      <div class="stats-grid">
-        <div class="stat-item">
-          <span id="total-tasks" class="stat-number" aria-label="Összes feladat száma">0</span>
-          <span class="stat-label">Összes</span>
+    <!-- ===== AUTHENTICATION MODAL ===== -->
+    <div id="auth-modal" class="modal">
+        <div class="auth-container">
+            <h1>🚀 Task Manager</h1>
+            <p style="color: var(--text-secondary); margin-bottom: 24px;">
+                Collaborative task management with real-time sync
+            </p>
+            
+            <!-- Bejelentkezés Form -->
+            <form id="login-form" class="auth-form">
+                <h2>Bejelentkezés</h2>
+                
+                <div class="form-group">
+                    <input
+                        type="email"
+                        id="login-email"
+                        placeholder="Email cím"
+                        required
+                        autocomplete="email">
+                </div>
+                
+                <div class="form-group">
+                    <input
+                        type="password"
+                        id="login-password"
+                        placeholder="Jelszó"
+                        required
+                        autocomplete="current-password"
+                        minlength="6">
+                </div>
+                
+                <button type="submit" class="btn-primary">🔑 Bejelentkezés</button>
+                <button type="button" id="google-signin" class="btn-google">🌐 Google bejelentkezés</button>
+                
+                <p>Nincs még fiókod?
+                    <a href="#" id="show-register">Regisztráció</a>
+                </p>
+            </form>
+            
+            <!-- Regisztráció Form -->
+            <form id="register-form" class="auth-form hidden">
+                <h2>Regisztráció</h2>
+                
+                <div class="form-group">
+                    <input
+                        type="text"
+                        id="register-name"
+                        placeholder="Teljes név"
+                        required
+                        autocomplete="name">
+                </div>
+                
+                <div class="form-group">
+                    <input
+                        type="email"
+                        id="register-email"
+                        placeholder="Email cím"
+                        required
+                        autocomplete="email">
+                </div>
+                
+                <div class="form-group">
+                    <input
+                        type="password"
+                        id="register-password"
+                        placeholder="Jelszó (min. 6 karakter)"
+                        required
+                        autocomplete="new-password"
+                        minlength="6">
+                </div>
+                
+                <button type="submit" class="btn-primary">✨ Regisztráció</button>
+                
+                <p>Van már fiókod?
+                    <a href="#" id="show-login">Bejelentkezés</a>
+                </p>
+            </form>
         </div>
-        <div class="stat-item">
-          <span id="pending-tasks" class="stat-number" aria-label="Folyamatban lévő feladatok száma">0</span>
-          <span class="stat-label">Folyamatban</span>
-        </div>
-        <div class="stat-item">
-          <span id="completed-tasks" class="stat-number" aria-label="Befejezett feladatok száma">0</span>
-          <span class="stat-label">Befejezett</span>
-        </div>
-      </div>
-    </aside>
-  </main>
-</div>
-
-<!-- ===== FELADAT MODAL ===== -->
-<div id="task-modal" class="modal hidden" role="dialog" aria-labelledby="modal-title" aria-modal="true">
-  <div class="modal-content">
-    <button class="close-modal" aria-label="Modal bezárása">×</button>
-    <h2 id="modal-title">Új feladat</h2>
-    
-    <form id="task-form">
-      <div class="form-group">
-        <label for="task-title">Feladat neve *</label>
-        <input
-          type="text"
-          id="task-title"
-          required
-          autocomplete="off"
-          aria-describedby="title-help"
-        >
-        <small id="title-help" style="color: var(--text-secondary);">
-          Add meg a feladat rövid, tömör nevét
-        </small>
-      </div>
-      
-      <div class="form-group">
-        <label for="task-description">Leírás</label>
-        <textarea
-          id="task-description"
-          rows="3"
-          placeholder="Részletes leírás a feladatról..."
-          aria-describedby="description-help"
-        ></textarea>
-        <small id="description-help" style="color: var(--text-secondary);">
-          Opcionális részletes leírás
-        </small>
-      </div>
-      
-      <div class="form-row">
-        <div class="form-group">
-          <label for="task-priority">Prioritás</label>
-          <select id="task-priority">
-            <option value="low">🟢 Alacsony</option>
-            <option value="medium" selected>🟡 Közepes</option>
-            <option value="high">🟠 Magas</option>
-            <option value="urgent">🔴 Sürgős</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="task-category">Kategória</label>
-          <select id="task-category">
-            <option value="personal">👤 Személyes</option>
-            <option value="work">💼 Munka</option>
-            <option value="shopping">🛒 Bevásárlás</option>
-            <option value="health">🏥 Egészség</option>
-            <option value="other">📂 Egyéb</option>
-          </select>
-        </div>
-      </div>
-      
-      <div class="form-row">
-        <div class="form-group">
-          <label for="task-date">Határidő</label>
-          <input type="date" id="task-date">
-        </div>
-        <div class="form-group">
-          <label for="task-time">Időpont</label>
-          <input type="time" id="task-time">
-        </div>
-      </div>
-      
-      <div class="form-row">
-        <div class="form-group">
-          <label for="estimated-time">Becsült idő (perc)</label>
-          <input
-            type="number"
-            id="estimated-time"
-            min="1"
-            max="1440"
-            placeholder="pl. 30"
-          >
-        </div>
-        <div class="form-group">
-          <label for="task-type">Láthatóság</label>
-          <select id="task-type">
-            <option value="private">🔒 Privát (csak én látom)</option>
-            <option value="shared">👥 Megosztott (partnerek is látják)</option>
-          </select>
-        </div>
-      </div>
-      
-      <div class="form-actions">
-        <button type="button" id="cancel-task" class="btn-secondary">❌ Mégse</button>
-        <button type="submit" class="btn-primary">💾 Mentés</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- ===== MEGOSZTÁS MODAL ===== -->
-<div id="share-modal" class="modal hidden" role="dialog" aria-labelledby="share-title" aria-modal="true">
-  <div class="modal-content">
-    <button id="close-share" class="close-modal" aria-label="Megosztás modal bezárása">×</button>
-    <h2 id="share-title">👥 Feladatok megosztása</h2>
-    
-    <p style="color: var(--text-secondary); margin-bottom: 20px;">
-      Oszd meg a feladataidat egy partnerrel! A megosztott feladatokat mindketten látjátok és szerkeszthetitek.
-    </p>
-    
-    <div class="form-group">
-      <label for="share-email">Partner email címe</label>
-      <div style="display: flex; gap: 8px;">
-        <input
-          type="email"
-          id="share-email"
-          placeholder="partner@email.com"
-          style="flex: 1;"
-          aria-describedby="share-help"
-        >
-        <button id="share-btn" class="btn-primary">🤝 Megosztás</button>
-      </div>
-      <small id="share-help" style="color: var(--text-secondary);">
-        A partnerednek regisztrálva kell lennie ezzel az email címmel
-      </small>
     </div>
-    
-    <div class="shared-users">
-      <h3>Aktuális partnerek:</h3>
-      <div id="shared-users" aria-live="polite">
-        <!-- A megosztott felhasználók dinamikusan betöltődnek ide -->
-      </div>
+
+    <!-- ===== FŐ ALKALMAZÁS ===== -->
+    <div id="main-app" class="hidden">
+        <!-- Header -->
+        <header class="header">
+            <h1>📋 Task Manager</h1>
+            <div class="header-controls">
+                <div id="user-info">
+                    <span>👤</span>
+                    <span id="user-name">Felhasználó</span>
+                    <span id="user-email" style="font-size: 0.8em; color: var(--text-secondary); display: block;"></span>
+                </div>
+                <button
+                    id="open-share"
+                    class="btn-icon"
+                    title="Feladatok megosztása"
+                    aria-label="Feladatok megosztása">👥</button>
+                <button
+                    id="add-task-btn"
+                    class="btn-icon"
+                    title="Új feladat hozzáadása"
+                    aria-label="Új feladat hozzáadása">➕</button>
+                <button
+                    id="view-toggle"
+                    class="btn-icon"
+                    title="Nézet váltás"
+                    aria-label="Nézet váltás">📅</button>
+                <button
+                    id="logout-btn"
+                    class="btn-icon"
+                    title="Kijelentkezés"
+                    aria-label="Kijelentkezés">🚪</button>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- Szűrők és keresés -->
+            <section class="filters" aria-labelledby="filters-heading">
+                <h2 id="filters-heading" style="display: none;">Szűrők és keresés</h2>
+                
+                <div class="search-box">
+                    <input
+                        type="text"
+                        id="search-input"
+                        placeholder="🔍 Keresés a feladatok között..."
+                        aria-label="Keresés a feladatok között">
+                </div>
+                
+                <div class="filter-buttons" role="tablist" aria-label="Feladat szűrők">
+                    <button class="filter-btn active" data-filter="all" role="tab" aria-selected="true">📋 Összes</button>
+                    <button class="filter-btn" data-filter="pending" role="tab" aria-selected="false">⏳ Folyamatban</button>
+                    <button class="filter-btn" data-filter="completed" role="tab" aria-selected="false">✅ Befejezett</button>
+                    <button class="filter-btn" data-filter="shared" role="tab" aria-selected="false">👥 Megosztott</button>
+                    <button class="filter-btn" data-filter="private" role="tab" aria-selected="false">🔒 Privát</button>
+                </div>
+            </section>
+
+            <!-- Feladat lista -->
+            <section class="task-section" aria-labelledby="tasks-heading">
+                <h2 id="tasks-heading" style="display: none;">Feladatok listája</h2>
+                <div id="list-view" class="task-container" role="list" aria-live="polite">
+                    <!-- A feladatok dinamikusan betöltődnek ide -->
+                </div>
+            </section>
+
+            <!-- Statisztikák -->
+            <aside class="stats-panel" aria-labelledby="stats-heading">
+                <h3 id="stats-heading">📊 Statisztikák</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span id="total-tasks" class="stat-number" aria-label="Összes feladat száma">0</span>
+                        <span class="stat-label">Összes</span>
+                    </div>
+                    <div class="stat-item">
+                        <span id="pending-tasks" class="stat-number" aria-label="Folyamatban lévő feladatok száma">0</span>
+                        <span class="stat-label">Folyamatban</span>
+                    </div>
+                    <div class="stat-item">
+                        <span id="completed-tasks" class="stat-number" aria-label="Befejezett feladatok száma">0</span>
+                        <span class="stat-label">Befejezett</span>
+                    </div>
+                </div>
+            </aside>
+        </main>
     </div>
-  </div>
-</div>
 
-<!-- ===== HIDDEN ELEMENTS FOR SCREEN READERS ===== -->
-<div aria-live="polite" aria-atomic="true" class="sr-only" id="status-updates">
-  <!-- Képernyőolvasók számára státusz frissítések -->
-</div>
+    <!-- ===== FELADAT MODAL ===== -->
+    <div id="task-modal" class="modal hidden" role="dialog" aria-labelledby="modal-title" aria-modal="true">
+        <div class="modal-content">
+            <button class="close-modal" aria-label="Modal bezárása">×</button>
+            <h2 id="modal-title">Új feladat</h2>
+            
+            <form id="task-form">
+                <div class="form-group">
+                    <label for="task-title">Feladat neve *</label>
+                    <input
+                        type="text"
+                        id="task-title"
+                        required
+                        autocomplete="off"
+                        aria-describedby="title-help">
+                    <small id="title-help" style="color: var(--text-secondary);">
+                        Add meg a feladat rövid, tömör nevét
+                    </small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="task-description">Leírás</label>
+                    <textarea
+                        id="task-description"
+                        rows="3"
+                        placeholder="Részletes leírás a feladatról..."
+                        aria-describedby="description-help"></textarea>
+                    <small id="description-help" style="color: var(--text-secondary);">
+                        Opcionális részletes leírás
+                    </small>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="task-priority">Prioritás</label>
+                        <select id="task-priority">
+                            <option value="low">🟢 Alacsony</option>
+                            <option value="medium" selected>🟡 Közepes</option>
+                            <option value="high">🟠 Magas</option>
+                            <option value="urgent">🔴 Sürgős</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="task-category">Kategória</label>
+                        <select id="task-category">
+                            <option value="personal">👤 Személyes</option>
+                            <option value="work">💼 Munka</option>
+                            <option value="shopping">🛒 Bevásárlás</option>
+                            <option value="health">🏥 Egészség</option>
+                            <option value="other">📂 Egyéb</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="task-date">Határidő</label>
+                        <input type="date" id="task-date">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="task-time">Időpont</label>
+                        <input type="time" id="task-time">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="estimated-time">Becsült idő (perc)</label>
+                        <input
+                            type="number"
+                            id="estimated-time"
+                            min="1"
+                            max="1440"
+                            placeholder="pl. 30">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="task-type">Láthatóság</label>
+                        <select id="task-type">
+                            <option value="private">🔒 Privát (csak én látom)</option>
+                            <option value="shared">👥 Megosztott (partnerek is látják)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" id="cancel-task" class="btn-secondary">❌ Mégse</button>
+                    <button type="submit" class="btn-primary">💾 Mentés</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-<!-- ===== PWA SCRIPT ===== -->
-<script>
-// PWA szolgáltatások inicializálása
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', async () => {
-    try {
-      const registration = await navigator.serviceWorker.register('./sw.js');
-      console.log('✅ SW registered: ', registration);
-      
-      // Service Worker üzenetek figyelése
-      navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data && event.data.type === 'SYNC_COMPLETE') {
-          console.log('✅ Background sync complete:', event.data.message);
-          if (window.taskManager) {
-            window.taskManager.showNotification(event.data.message);
-          }
+    <!-- ===== MEGOSZTÁS MODAL ===== -->
+    <div id="share-modal" class="modal hidden" role="dialog" aria-labelledby="share-title" aria-modal="true">
+        <div class="modal-content">
+            <button id="close-share" class="close-modal" aria-label="Megosztás modal bezárása">×</button>
+            <h2 id="share-title">👥 Feladatok megosztása</h2>
+            
+            <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                Oszd meg a feladataidat egy partnerrel! A megosztott feladatokat mindketten látjátok és szerkeszthetitek.
+            </p>
+            
+            <div class="form-group">
+                <label for="share-email">Partner email címe</label>
+                <div style="display: flex; gap: 8px;">
+                    <input
+                        type="email"
+                        id="share-email"
+                        placeholder="partner@email.com"
+                        style="flex: 1;"
+                        aria-describedby="share-help">
+                    <button id="share-btn" class="btn-primary">🤝 Megosztás</button>
+                </div>
+                <small id="share-help" style="color: var(--text-secondary);">
+                    A partnerednek regisztrálva kell lennie ezzel az email címmel
+                </small>
+            </div>
+            
+            <div class="shared-users">
+                <h3>Aktuális partnerek:</h3>
+                <div id="shared-users" aria-live="polite">
+                    <!-- A megosztott felhasználók dinamikusan betöltődnek ide -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== HIDDEN ELEMENTS FOR SCREEN READERS ===== -->
+    <div aria-live="polite" aria-atomic="true" class="sr-only" id="status-updates">
+        <!-- Képernyőolvasók számára státusz frissítések -->
+    </div>
+
+    <!-- ===== PWA SCRIPT ===== -->
+    <script>
+        // PWA szolgáltatások inicializálása
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', async () => {
+                try {
+                    const registration = await navigator.serviceWorker.register('./sw.js');
+                    console.log('✅ SW registered: ', registration);
+                    
+                    // Service Worker üzenetek figyelése
+                    navigator.serviceWorker.addEventListener('message', (event) => {
+                        if (event.data && event.data.type === 'SYNC_COMPLETE') {
+                            console.log('✅ Background sync complete:', event.data.message);
+                            if (window.taskManager) {
+                                window.taskManager.showNotification(event.data.message);
+                            }
+                        }
+                    });
+                } catch (error) {
+                    console.log('❌ SW registration failed: ', error);
+                }
+            });
         }
-      });
-      
-    } catch (error) {
-      console.log('❌ SW registration failed: ', error);
-    }
-  });
-}
 
-// Online/Offline állapot figyelése
-function updateConnectionStatus() {
-  const indicator = document.getElementById('connection-indicator');
-  const text = document.getElementById('connection-text');
-  
-  if (navigator.onLine) {
-    indicator.style.background = '#4CAF50';
-    text.textContent = '🌐 Online';
-    document.body.classList.remove('offline');
-  } else {
-    indicator.style.background = '#FF9800';
-    text.textContent = '📴 Offline';
-    document.body.classList.add('offline');
-  }
-  
-  indicator.classList.remove('hidden');
-  setTimeout(() => {
-    if (navigator.onLine) {
-      indicator.classList.add('hidden');
-    }
-  }, 3000);
-}
+        // Online/Offline állapot figyelése
+        function updateConnectionStatus() {
+            const indicator = document.getElementById('connection-indicator');
+            const text = document.getElementById('connection-text');
+            
+            if (navigator.onLine) {
+                indicator.style.background = '#4CAF50';
+                text.textContent = '🌐 Online';
+                document.body.classList.remove('offline');
+            } else {
+                indicator.style.background = '#FF9800';
+                text.textContent = '📴 Offline';
+                document.body.classList.add('offline');
+            }
+            
+            indicator.classList.remove('hidden');
+            setTimeout(() => {
+                if (navigator.onLine) {
+                    indicator.classList.add('hidden');
+                }
+            }, 3000);
+        }
 
-window.addEventListener('online', updateConnectionStatus);
-window.addEventListener('offline', updateConnectionStatus);
+        window.addEventListener('online', updateConnectionStatus);
+        window.addEventListener('offline', updateConnectionStatus);
 
-// Kezdeti állapot
-document.addEventListener('DOMContentLoaded', () => {
-  updateConnectionStatus();
-});
+        // Kezdeti állapot
+        document.addEventListener('DOMContentLoaded', () => {
+            updateConnectionStatus();
+        });
 
-// Billentyűparancsok súgó
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'F1' || (e.ctrlKey && e.key === '/')) {
-    e.preventDefault();
-    alert(`⌨️ Billentyűparancsok:
+        // Billentyűparancsok súgó
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'F1' || (e.ctrlKey && e.key === '/')) {
+                e.preventDefault();
+                alert(`⌨️ Billentyűparancsok:
 
 Ctrl/Cmd + N - Új feladat
 Ctrl/Cmd + F - Keresés
 Escape - Modal bezárása
 F1 / Ctrl+/ - Ez a súgó`);
-  }
-});
-</script>
+            }
+        });
+    </script>
 
-<!-- ===== MAIN APPLICATION SCRIPT ===== -->
-<script type="module" src="./script.js"></script>
+    <!-- ===== MAIN APPLICATION SCRIPT ===== -->
+    <script type="module" src="./script.js"></script>
 
-<!-- ===== STRUCTURED DATA ===== -->
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "WebApplication",
-  "name": "Task Manager",
-  "url": "https://sufnex.github.io/task-manager/",
-  "description": "Collaborative task management application with real-time synchronization",
-  "applicationCategory": "Productivity",
-  "operatingSystem": "Web",
-  "offers": {
-    "@type": "Offer",
-    "price": "0",
-    "priceCurrency": "USD"
-  },
-  "author": {
-    "@type": "Person",
-    "name": "Task Manager Team"
-  }
-}
-</script>
-
+    <!-- ===== STRUCTURED DATA ===== -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Task Manager",
+        "url": "https://sufnex.github.io/task-manager/",
+        "description": "Collaborative task management application with real-time synchronization",
+        "applicationCategory": "Productivity",
+        "operatingSystem": "Web",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "author": {
+            "@type": "Person",
+            "name": "Task Manager Team"
+        }
+    }
+    </script>
 </body>
 </html>
