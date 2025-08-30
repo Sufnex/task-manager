@@ -26,6 +26,7 @@ let taskManager = null;
 let collaborationManager = null;
 
 // AuthManager osztály
+// AuthManager osztály
 class AuthManager {
     constructor() {
         console.log('🔐 AuthManager inicializálás...');
@@ -105,6 +106,7 @@ class AuthManager {
 
     initializeManagers(user) {
         console.log('🚀 TaskManager inicializálás...');
+        console.log('👤 User objektum:', user.uid, user.email); // DEBUG
         window.taskManager = new TaskManager(user.uid, user.email);
         window.collaborationManager = new CollaborationManager(user.uid, user.email);
     }
@@ -166,6 +168,7 @@ class AuthManager {
         }
     }
 }
+
 
 // NotificationManager osztály
 class NotificationManager {
@@ -355,7 +358,7 @@ class TaskManager {
             addTaskBtn: document.getElementById('addTaskBtn'),
             taskForm: document.getElementById('taskForm'),
             taskModal: document.getElementById('taskModal'),
-            closeModal: document.querySelector('.close'),
+            closeModal: document.querySelector('#taskModal .close'),
             submitTaskBtn: document.getElementById('submitTaskBtn'),
             taskTitle: document.getElementById('taskTitle'),
             taskDescription: document.getElementById('taskDescription'),
@@ -368,12 +371,22 @@ class TaskManager {
             completedTasks: document.getElementById('completedTasks'),
             pendingTasks: document.getElementById('pendingTasks')
         };
-
+    
+        // DEBUG: Ellenőrizzük melyik elem hiányzik
+        Object.keys(this.elements).forEach(key => {
+            if (!this.elements[key] || (this.elements[key].length === 0)) {
+                console.error(`❌ Hiányzó DOM elem: ${key}`);
+            }
+        });
+    
         if (!this.elements.addTaskBtn || !this.elements.tasksList) {
+            console.error('❌ Kritikus DOM elemek hiányoznak!');
             throw new Error('Hiányzó DOM elemek');
         }
+        
         console.log('✅ DOM elemek megtalálva');
     }
+
 
     setupEventListeners() {
         console.log('👂 Event listener-ek beállítása...');
@@ -803,3 +816,4 @@ document.addEventListener('DOMContentLoaded', () => {
     
     console.log('🚀 Multi-User Task Manager betöltve!');
 });
+
