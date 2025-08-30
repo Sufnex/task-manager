@@ -178,7 +178,7 @@ class AuthManager {
         }
     }
 
-    async function logout() {
+    async logout() {
     console.log('🚪 Kijelentkezés...');
     
     try {
@@ -924,4 +924,5 @@ animationStyles.textContent = `
     }
 `;
 document.head.appendChild(animationStyles);
+
 
