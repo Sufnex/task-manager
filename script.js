@@ -35,16 +35,20 @@ class AuthManager {
   }
 
   initializeElements() {
-    console.log('📋 Auth elemek inicializálása...');
-    this.elements = {
-      authModal: document.getElementById('auth-modal'),
-      loginBtn: document.getElementById('google-signin'),
-      logoutBtn: document.getElementById('logout-btn'),
-      userInfo: document.getElementById('user-info'),
-      userName: document.getElementById('user-name'),
-      userEmail: document.getElementById('user-email'),
-      app: document.getElementById('main-app')
-    };
+      console.log('📋 Auth elemek inicializálása...');
+      this.elements = {
+        authModal: document.getElementById('auth-modal'),
+        loginBtn: document.getElementById('google-signin'),
+        logoutBtn: document.getElementById('logout-btn'),
+        userInfo: document.getElementById('user-info'),
+        userName: document.getElementById('user-name'),
+        userEmail: document.getElementById('user-email'),
+        app: document.getElementById('main-app'),
+        loginForm: document.getElementById('login-form'),
+        registerForm: document.getElementById('register-form'),
+        showRegister: document.getElementById('show-register'),
+        showLogin: document.getElementById('show-login')
+      };
 
     // DEBUG: Ellenőrizzük melyik elem hiányzik
     Object.keys(this.elements).forEach(key => {
@@ -57,7 +61,7 @@ class AuthManager {
     console.log('✅ Auth elemek ellenőrzése kész');
   }
 
-  setupEventListeners() {
+setupEventListeners() {
     console.log('👂 Auth event listener-ek beállítása...');
     
     if (this.elements.loginBtn) {
@@ -73,9 +77,27 @@ class AuthManager {
     } else {
       console.error('❌ logoutBtn nem található!');
     }
+    
+    if (this.elements.showRegister) {
+        this.elements.showRegister.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.elements.loginForm.classList.add('hidden');
+            this.elements.registerForm.classList.remove('hidden');
+        });
+        console.log('✅ Show Register listener hozzáadva');
+    }
+
+    if (this.elements.showLogin) {
+        this.elements.showLogin.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.elements.registerForm.classList.add('hidden');
+            this.elements.loginForm.classList.remove('hidden');
+        });
+        console.log('✅ Show Login listener hozzáadva');
+    }
 
     console.log('✅ Auth event listener-ek beállítva');
-  }
+}
 
   setupAuthStateListener() {
     console.log('👀 Auth állapot figyelés indítása...');
@@ -319,12 +341,13 @@ class CollaborationManager {
     });
   }
 
-  showShareModal() {
+showShareModal() {
     if (this.elements.shareModal) {
       this.elements.shareModal.style.display = 'block';
       this.elements.shareModal.classList.remove('hidden');
+      this.displaySharedUsers();
     }
-  }
+}
 
   hideShareModal() {
     if (this.elements.shareModal) {
@@ -337,36 +360,76 @@ class CollaborationManager {
   }
 
   async handleShare(e) {
-    e.preventDefault();
-    if (!this.elements.shareEmail) {
-      notificationManager.show('Email mező nem található!', 'error');
-      return;
-    }
-
-    const collaboratorEmail = this.elements.shareEmail.value.trim();
-    if (!collaboratorEmail) {
-      notificationManager.show('Az email cím megadása kötelező!', 'error');
-      return;
-    }
-    if (collaboratorEmail === this.userEmail) {
-      notificationManager.show('Nem oszthatod meg magaddal a feladatot!', 'error');
-      return;
-    }
-
-    try {
-      await addDoc(collection(db, 'collaborations'), {
-        ownerId: this.userId,
-        ownerEmail: this.userEmail,
-        collaboratorEmail,
-        createdAt: new Date(),
-        status: 'active'
+      e.preventDefault();
+      if (!this.elements.shareEmail) {
+        notificationManager.show('Email mező nem található!', 'error');
+        return;
+      }
+  
+      const collaboratorEmail = this.elements.shareEmail.value.trim();
+      if (!collaboratorEmail) {
+        notificationManager.show('Az email cím megadása kötelező!', 'error');
+        return;
+      }
+      if (collaboratorEmail === this.userEmail) {
+        notificationManager.show('Nem oszthatod meg magaddal a feladatot!', 'error');
+        return;
+      }
+    
+      const { getDocs, query, collection, where } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+      const collaborationsQuery = query(
+          collection(db, 'collaborations'),
+          where('ownerId', '==', this.userId),
+          where('collaboratorEmail', '==', collaboratorEmail)
+      );
+      const existingCollaboration = await getDocs(collaborationsQuery);
+  
+      if (!existingCollaboration.empty) {
+          notificationManager.show('Ez a felhasználó már hozzá van adva a partnereidhez!', 'warning');
+          return;
+      }
+  
+      try {
+        const { addDoc, collection } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        await addDoc(collection(db, 'collaborations'), {
+          ownerId: this.userId,
+          ownerEmail: this.userEmail,
+          collaboratorEmail,
+          createdAt: new Date(),
+          status: 'active'
+        });
+        notificationManager.show(`Partnerkapcsolat létrehozva ${collaboratorEmail} címmel! 🤝`, 'success');
+        this.hideShareModal();
+      } catch (error) {
+        console.error('❌ Megosztási hiba:', error);
+        notificationManager.show('Hiba a partnerkapcsolat létrehozása során!', 'error');
+      }
+  }
+  async displaySharedUsers() {
+      const sharedUsersContainer = document.getElementById('shared-users-list');
+      if (!sharedUsersContainer) return;
+  
+      sharedUsersContainer.innerHTML = '<p>Partnerek betöltése...</p>';
+  
+      const { getDocs, query, collection, where } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+      const collaborationsQuery = query(
+          collection(db, 'collaborations'),
+          where('ownerId', '==', this.userId)
+      );
+      const snapshot = await getDocs(collaborationsQuery);
+  
+      if (snapshot.empty) {
+          sharedUsersContainer.innerHTML = '<p>Nincsenek partnerek hozzáadva.</p>';
+          return;
+      }
+  
+      let html = '<ul>';
+      snapshot.forEach(doc => {
+          const data = doc.data();
+          html += `<li>${data.collaboratorEmail}</li>`;
       });
-      notificationManager.show(`Partnerkapcsolat létrehozva ${collaboratorEmail} címmel! 🤝`, 'success');
-      this.hideShareModal();
-    } catch (error) {
-      console.error('❌ Megosztási hiba:', error);
-      notificationManager.show('Hiba a partnerkapcsolat létrehozása során!', 'error');
-    }
+      html += '</ul>';
+      sharedUsersContainer.innerHTML = html;
   }
 }
 
@@ -589,24 +652,24 @@ class TaskManager {
   }
 
   async handleTaskSubmit(e) {
-    e.preventDefault();
-    
-    const taskData = {
-      title: this.elements.taskTitle.value.trim(),
-      description: this.elements.taskDescription.value.trim(),
-      priority: this.elements.taskPriority.value,
-      category: this.elements.taskCategory.value,
-      userId: this.userId,
-      userEmail: this.userEmail,
-      completed: false,
-      isShared: false,
-      updatedAt: new Date()
-    };
-
-    if (!taskData.title) {
-      notificationManager.show('A feladat címe kötelező!', 'error');
-      return;
-    }
+      e.preventDefault();
+      
+      const taskData = {
+        title: this.elements.taskTitle.value.trim(),
+        description: this.elements.taskDescription.value.trim(),
+        priority: this.elements.taskPriority.value,
+        category: this.elements.taskCategory.value,
+        userId: this.userId,
+        userEmail: this.userEmail,
+        completed: false,
+        isShared: document.getElementById('task-type').value === 'shared',
+        updatedAt: new Date()
+      };
+  
+      if (!taskData.title) {
+        notificationManager.show('A feladat címe kötelező!', 'error');
+        return;
+      }
 
     try {
       if (this.currentEditingTask) {
