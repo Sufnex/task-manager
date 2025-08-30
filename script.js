@@ -178,17 +178,30 @@ class AuthManager {
         }
     }
 
-    async logout() {
-        console.log('🚪 Kijelentkezés...');
-        try {
-            await signOut(auth);
-            this.showNotification('Sikeres kijelentkezés! 👋');
-            console.log('✅ Kijelentkezés sikeres');
-        } catch (error) {
-            console.error('❌ Kijelentkezési hiba:', error);
-            this.showNotification('Kijelentkezési hiba: ' + error.message, 'error');
+    async function logout() {
+    console.log('🚪 Kijelentkezés...');
+    
+    try {
+        // TaskManager listener-ek leállítása
+        if (window.taskManager) {
+            window.taskManager.cleanup();
+            window.taskManager = null;
         }
+        
+        // CollaborationManager cleanup
+        if (window.collaborationManager) {
+            window.collaborationManager = null;
+        }
+        
+        await signOut(auth);
+        notificationManager.show('Sikeres kijelentkezés! 👋', 'success');
+        console.log('✅ Kijelentkezés sikeres');
+    } catch (error) {
+        console.error('❌ Kijelentkezési hiba:', error);
+        notificationManager.show('Hiba a kijelentkezés során!', 'error');
     }
+}
+
 
     getErrorMessage(errorCode) {
         const messages = {
@@ -412,504 +425,394 @@ class CollaborationManager {
 
 /* ===== TASK MANAGER (FIREBASE INTEGRÁLT) ===== */
 class TaskManager {
-    constructor(user) {
-        console.log('📋 TaskManager inicializálás...', user.email);
-        this.user = user;
+    constructor(userId, userEmail) {
+        this.userId = userId;
+        this.userEmail = userEmail;
         this.tasks = [];
-        this.currentView = 'list';
+        this.filteredTasks = [];
         this.currentFilter = 'all';
-        this.currentEditId = null;
-        this.initDOMElements();
-        this.initEventListeners();
-        this.setupFirebaseListeners();
-        this.renderTasks();
-        this.updateStats();
-
-        // Collaboration manager inicializálás
-        window.collaborationManager = new CollaborationManager(user, this);
-        console.log('✅ TaskManager inicializálva');
+        this.unsubscribeTasks = null;
+        this.unsubscribeSharedTasks = null;
+        this.init();
     }
 
-    initDOMElements() {
-        console.log('📋 DOM elemek inicializálása...');
-        this.addTaskBtn = document.getElementById('add-task-btn');
-        this.viewToggle = document.getElementById('view-toggle');
-        this.searchInput = document.getElementById('search-input');
-        this.filterButtons = document.querySelectorAll('.filter-btn');
-        this.listView = document.getElementById('list-view');
-        this.modal = document.getElementById('task-modal');
-        this.modalTitle = document.getElementById('modal-title');
-        this.taskForm = document.getElementById('task-form');
-        this.closeModalBtn = document.querySelector('.close-modal');
-        this.cancelTaskBtn = document.getElementById('cancel-task');
-        this.taskTitle = document.getElementById('task-title');
-        this.taskDescription = document.getElementById('task-description');
-        this.taskPriority = document.getElementById('task-priority');
-        this.taskCategory = document.getElementById('task-category');
-        this.taskDate = document.getElementById('task-date');
-        this.taskTime = document.getElementById('task-time');
-        this.estimatedTime = document.getElementById('estimated-time');
-        this.taskType = document.getElementById('task-type');
+    async init() {
+        console.log('📋 TaskManager inicializálás...', this.userEmail);
+        
+        try {
+            this.initializeDOM();
+            this.setupEventListeners();
+            this.setupFirebaseListeners();
+            console.log('✅ TaskManager inicializálva');
+        } catch (error) {
+            console.error('❌ TaskManager inicializálási hiba:', error);
+        }
+    }
 
-        // Statisztika elemek
-        this.totalTasksEl = document.getElementById('total-tasks');
-        this.completedTasksEl = document.getElementById('completed-tasks');
-        this.pendingTasksEl = document.getElementById('pending-tasks');
+    initializeDOM() {
+        console.log('📋 DOM elemek inicializálása...');
+        
+        this.elements = {
+            addTaskBtn: document.getElementById('addTaskBtn'),
+            taskForm: document.getElementById('taskForm'),
+            taskModal: document.getElementById('taskModal'),
+            closeModal: document.querySelector('.close'),
+            submitTaskBtn: document.getElementById('submitTaskBtn'),
+            taskTitle: document.getElementById('taskTitle'),
+            taskDescription: document.getElementById('taskDescription'),
+            taskPriority: document.getElementById('taskPriority'),
+            taskCategory: document.getElementById('taskCategory'),
+            tasksList: document.getElementById('tasksList'),
+            filterBtns: document.querySelectorAll('.filter-btn'),
+            searchInput: document.getElementById('searchInput'),
+            totalTasks: document.getElementById('totalTasks'),
+            completedTasks: document.getElementById('completedTasks'),
+            pendingTasks: document.getElementById('pendingTasks')
+        };
+
+        if (!this.elements.addTaskBtn || !this.elements.tasksList) {
+            throw new Error('Hiányzó DOM elemek');
+        }
+
         console.log('✅ DOM elemek megtalálva');
     }
 
-    initEventListeners() {
+    setupEventListeners() {
         console.log('👂 Event listener-ek beállítása...');
-        this.addTaskBtn.addEventListener('click', () => this.openModal());
-        this.closeModalBtn.addEventListener('click', () => this.closeModal());
-        this.cancelTaskBtn.addEventListener('click', () => this.closeModal());
-        this.modal.addEventListener('click', (e) => {
-            if (e.target === this.modal) this.closeModal();
+        
+        this.elements.addTaskBtn.addEventListener('click', () => this.showTaskModal());
+        this.elements.closeModal.addEventListener('click', () => this.hideTaskModal());
+        this.elements.taskForm.addEventListener('submit', (e) => this.handleTaskSubmit(e));
+        this.elements.searchInput.addEventListener('input', (e) => this.handleSearch(e.target.value));
+        
+        this.elements.filterBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.elements.filterBtns.forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                this.currentFilter = e.target.dataset.filter;
+                this.filterAndRenderTasks();
+            });
         });
-        this.taskForm.addEventListener('submit', (e) => this.handleFormSubmit(e));
-        this.viewToggle.addEventListener('click', () => this.toggleView());
-        this.filterButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => this.setFilter(e.target.dataset.filter));
-        });
-        this.searchInput.addEventListener('input', () => this.renderTasks());
 
-        // Escape key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') this.closeModal();
+        window.addEventListener('click', (e) => {
+            if (e.target === this.elements.taskModal) {
+                this.hideTaskModal();
+            }
         });
+
         console.log('✅ Event listener-ek beállítva');
     }
 
     setupFirebaseListeners() {
         console.log('🔥 Firebase listener-ek beállítása...');
-        // Tisztítjuk a korábbi listener-eket
-        this.tasks = [];
-
-        // Saját feladatok figyelése (INDEX NÉLKÜL ELŐSZÖR)
+        
         console.log('👀 Saját feladatok figyelése...');
-        try {
-            // EGYSZERŰ QUERY ELŐSZÖR (index nélkül)
-            const myTasksQuery = query(collection(db, 'tasks'), where('ownerUid', '==', this.user.uid));
-            
-            onSnapshot(myTasksQuery, (snapshot) => {
-                console.log(`📥 ${snapshot.size} saját feladat érkezett`);
-                const myTasks = [];
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    console.log('📄 Feladat:', doc.id, data.title);
-                    myTasks.push({
-                        id: doc.id,
-                        ...data,
-                        isOwn: true
-                    });
-                });
-                this.updateTasksFromFirebase(myTasks, 'own');
-            }, (error) => {
-                console.error('❌ Saját feladatok listener hiba:', error);
-                this.showNotification('Hiba a feladatok betöltése során!', 'error');
-            });
-        } catch (error) {
-            console.error('❌ Firebase listener setup hiba:', error);
-        }
+        const tasksQuery = query(
+            collection(db, 'tasks'),
+            where('userId', '==', this.userId),
+            orderBy('createdAt', 'desc')
+        );
 
-        // Megosztott feladatok figyelése
+        this.unsubscribeTasks = onSnapshot(tasksQuery, (snapshot) => {
+            console.log(`📥 ${snapshot.docs.length} saját feladat érkezett`);
+            snapshot.docs.forEach(doc => {
+                console.log(`📄 Feladat: ${doc.id}`, doc.data().title);
+            });
+            this.handleTasksSnapshot(snapshot, 'own');
+        }, (error) => {
+            console.error('❌ Saját feladatok listener hiba:', error);
+            notificationManager.show('Hiba a feladatok betöltése során!', 'error');
+        });
+
         this.loadSharedTasks();
     }
 
+    cleanup() {
+        console.log('🧹 TaskManager cleanup...');
+        
+        if (this.unsubscribeTasks) {
+            this.unsubscribeTasks();
+            this.unsubscribeTasks = null;
+            console.log('✅ Saját feladatok listener leállítva');
+        }
+        
+        if (this.unsubscribeSharedTasks) {
+            this.unsubscribeSharedTasks();
+            this.unsubscribeSharedTasks = null;
+            console.log('✅ Megosztott feladatok listener leállítva');
+        }
+    }
+
     async loadSharedTasks() {
+        console.log('👥 Megosztott feladatok betöltése...');
+        
         try {
-            console.log('👥 Megosztott feladatok betöltése...');
-            // Kollaborációk lekérése ahol én vagyok a megosztott fél
-            const collaborationsQuery = query(collection(db, 'collaborations'), 
-                where('sharedWithUid', '==', this.user.uid));
-            const collaborationDocs = await getDocs(collaborationsQuery);
-            
-            console.log(`🤝 ${collaborationDocs.size} kollaboráció találva`);
+            const collaborationsQuery = query(
+                collection(db, 'collaborations'),
+                where('collaboratorEmail', '==', this.userEmail)
+            );
 
-            collaborationDocs.forEach((collaborationDoc) => {
-                const collaboration = collaborationDoc.data();
-                console.log('📩 Kollaboráció:', collaboration.ownerEmail);
+            const collaborationsSnapshot = await getDocs(collaborationsQuery);
+            console.log(`🤝 ${collaborationsSnapshot.docs.length} kollaboráció találva`);
 
-                // Megosztott feladatok figyelése (EGYSZERŰ QUERY)
-                const sharedTasksQuery = query(collection(db, 'tasks'), 
-                    where('ownerUid', '==', collaboration.ownerUid),
-                    where('type', '==', 'shared'));
+            for (const collabDoc of collaborationsSnapshot.docs) {
+                const collaboration = collabDoc.data();
+                const sharedTasksQuery = query(
+                    collection(db, 'tasks'),
+                    where('userId', '==', collaboration.ownerId),
+                    where('isShared', '==', true)
+                );
 
-                onSnapshot(sharedTasksQuery, (snapshot) => {
-                    console.log(`📥 ${snapshot.size} megosztott feladat érkezett`);
-                    const sharedTasks = [];
-                    snapshot.forEach((doc) => {
-                        const data = doc.data();
-                        console.log('📄 Megosztott feladat:', doc.id, data.title);
-                        sharedTasks.push({
-                            id: doc.id,
-                            ...data,
-                            isShared: true,
-                            sharedBy: collaboration.ownerEmail
-                        });
-                    });
-                    this.updateTasksFromFirebase(sharedTasks, 'shared');
-                }, (error) => {
-                    console.error('❌ Megosztott feladatok listener hiba:', error);
-                });
-            });
+                const sharedTasksSnapshot = await getDocs(sharedTasksQuery);
+                this.handleTasksSnapshot(sharedTasksSnapshot, 'shared', collaboration.ownerId);
+            }
         } catch (error) {
             console.error('❌ Megosztott feladatok betöltési hiba:', error);
         }
     }
 
-    updateTasksFromFirebase(newTasks, type) {
-        console.log(`🔄 Feladatok frissítése (${type}):`, newTasks.length);
-        if (type === 'own') {
-            // Saját feladatok frissítése
-            this.tasks = this.tasks.filter(task => task.isShared);
-            this.tasks = [...this.tasks, ...newTasks];
-        } else if (type === 'shared') {
-            // Megosztott feladatok frissítése
-            this.tasks = this.tasks.filter(task => !task.isShared);
-            this.tasks = [...this.tasks, ...newTasks];
-        }
+    handleTasksSnapshot(snapshot, type, ownerId = null) {
+        console.log(`🔄 Feladatok frissítése (${type}): ${snapshot.docs.length}`);
         
-        console.log('📊 Összes feladat:', this.tasks.length);
-        this.renderTasks();
+        if (type === 'own') {
+            this.tasks = this.tasks.filter(task => task.type !== 'own');
+        } else if (type === 'shared') {
+            this.tasks = this.tasks.filter(task => !(task.type === 'shared' && task.ownerId === ownerId));
+        }
+
+        snapshot.docs.forEach(doc => {
+            const taskData = { 
+                id: doc.id, 
+                ...doc.data(), 
+                type,
+                ownerId: ownerId || this.userId
+            };
+            this.tasks.push(taskData);
+        });
+
+        console.log(`📊 Összes feladat: ${this.tasks.length}`);
+        this.filterAndRenderTasks();
         this.updateStats();
     }
 
-    async handleFormSubmit(e) {
-        e.preventDefault();
-        console.log('💾 Feladat mentése...');
+    showTaskModal(task = null) {
+        this.currentEditingTask = task;
+        
+        if (task) {
+            this.elements.taskTitle.value = task.title;
+            this.elements.taskDescription.value = task.description || '';
+            this.elements.taskPriority.value = task.priority || 'medium';
+            this.elements.taskCategory.value = task.category || 'personal';
+            this.elements.submitTaskBtn.textContent = 'Feladat frissítése';
+        } else {
+            this.elements.taskForm.reset();
+            this.elements.submitTaskBtn.textContent = 'Feladat létrehozása';
+        }
+        
+        this.elements.taskModal.style.display = 'block';
+    }
 
+    hideTaskModal() {
+        this.elements.taskModal.style.display = 'none';
+        this.currentEditingTask = null;
+    }
+
+    async handleTaskSubmit(e) {
+        e.preventDefault();
+        
         const taskData = {
-            title: this.taskTitle.value.trim(),
-            description: this.taskDescription.value.trim(),
-            priority: this.taskPriority.value,
-            category: this.taskCategory.value,
-            dueDate: this.taskDate.value,
-            dueTime: this.taskTime.value,
-            estimatedTime: parseInt(this.estimatedTime.value) || 0,
-            type: this.taskType.value,
-            ownerUid: this.user.uid,
-            createdAt: serverTimestamp(),
-            completed: false
+            title: this.elements.taskTitle.value.trim(),
+            description: this.elements.taskDescription.value.trim(),
+            priority: this.elements.taskPriority.value,
+            category: this.elements.taskCategory.value,
+            userId: this.userId,
+            userEmail: this.userEmail,
+            completed: false,
+            isShared: false,
+            updatedAt: new Date()
         };
 
-        console.log('📄 Feladat adatok:', taskData);
-
         if (!taskData.title) {
-            this.showNotification('A feladat neve kötelező!', 'error');
+            notificationManager.show('A feladat címe kötelező!', 'error');
             return;
         }
 
         try {
-            if (this.currentEditId) {
-                console.log('✏️ Feladat szerkesztése:', this.currentEditId);
-                await this.updateTask(this.currentEditId, taskData);
+            if (this.currentEditingTask) {
+                await updateDoc(doc(db, 'tasks', this.currentEditingTask.id), taskData);
+                notificationManager.show('Feladat sikeresen frissítve! ✏️', 'success');
             } else {
-                console.log('➕ Új feladat létrehozása');
-                await this.createTask(taskData);
+                taskData.createdAt = new Date();
+                await addDoc(collection(db, 'tasks'), taskData);
+                notificationManager.show('Feladat sikeresen létrehozva! ✅', 'success');
             }
-            this.closeModal();
-            this.showNotification('Feladat mentve! 🎉');
-            console.log('✅ Feladat mentve');
+            
+            this.hideTaskModal();
         } catch (error) {
             console.error('❌ Feladat mentési hiba:', error);
-            this.showNotification('Hiba történt a mentés során!', 'error');
+            notificationManager.show('Hiba a feladat mentése során!', 'error');
         }
     }
 
-    async createTask(taskData) {
+    async toggleTaskCompletion(taskId, currentStatus) {
         try {
-            console.log('🔥 Firestore-ba írás...', taskData);
-            const docRef = await addDoc(collection(db, 'tasks'), taskData);
-            console.log('✅ Feladat létrehozva, ID:', docRef.id);
+            await updateDoc(doc(db, 'tasks', taskId), {
+                completed: !currentStatus,
+                updatedAt: new Date()
+            });
+            
+            const message = !currentStatus ? 'Feladat befejezve! 🎉' : 'Feladat újra megnyitva! 🔄';
+            notificationManager.show(message, 'success');
         } catch (error) {
-            console.error('❌ Feladat létrehozási hiba:', error);
-            throw new Error('Feladat létrehozási hiba: ' + error.message);
-        }
-    }
-
-    async updateTask(taskId, taskData) {
-        try {
-            // Csak saját feladatokat szerkeszthetjük
-            const task = this.tasks.find(t => t.id === taskId);
-            if (!task || task.isShared) {
-                throw new Error('Nincs jogosultságod szerkeszteni ezt a feladatot!');
-            }
-
-            console.log('🔄 Feladat frissítése:', taskId);
-            await updateDoc(doc(db, 'tasks', taskId), taskData);
-            console.log('✅ Feladat frissítve');
-        } catch (error) {
-            console.error('❌ Feladat frissítési hiba:', error);
-            throw new Error('Feladat frissítési hiba: ' + error.message);
+            console.error('❌ Feladat állapot frissítési hiba:', error);
+            notificationManager.show('Hiba a feladat frissítése során!', 'error');
         }
     }
 
     async deleteTask(taskId) {
-        const task = this.tasks.find(t => t.id === taskId);
-        if (!task) return;
-
-        if (task.isShared) {
-            this.showNotification('Nem törölheted a megosztott feladatokat!', 'error');
+        if (!confirm('Biztosan törölni szeretnéd ezt a feladatot?')) {
             return;
         }
 
-        if (!confirm('Biztosan törölni szeretnéd ezt a feladatot?')) return;
-
         try {
-            console.log('🗑️ Feladat törlése:', taskId);
             await deleteDoc(doc(db, 'tasks', taskId));
-            this.showNotification('Feladat törölve! 🗑️');
-            console.log('✅ Feladat törölve');
+            notificationManager.show('Feladat sikeresen törölve! 🗑️', 'success');
         } catch (error) {
             console.error('❌ Feladat törlési hiba:', error);
-            this.showNotification('Hiba történt a törlés során!', 'error');
+            notificationManager.show('Hiba a feladat törlése során!', 'error');
         }
     }
 
-    async toggleTaskComplete(taskId) {
-        const task = this.tasks.find(t => t.id === taskId);
-        if (!task) return;
+    handleSearch(searchTerm) {
+        this.searchTerm = searchTerm.toLowerCase();
+        this.filterAndRenderTasks();
+    }
 
-        try {
-            console.log('✅ Feladat állapot váltás:', taskId, !task.completed);
-            await updateDoc(doc(db, 'tasks', taskId), {
-                completed: !task.completed,
-                completedAt: !task.completed ? serverTimestamp() : null
+    filterAndRenderTasks() {
+        let filtered = this.tasks;
+
+        if (this.currentFilter !== 'all') {
+            filtered = filtered.filter(task => {
+                if (this.currentFilter === 'completed') return task.completed;
+                if (this.currentFilter === 'pending') return !task.completed;
+                return task.category === this.currentFilter;
             });
-            this.showNotification(!task.completed ? 'Feladat befejezve! 🎉' : 'Feladat visszaállítva! ↶');
-            console.log('✅ Feladat állapot frissítve');
-        } catch (error) {
-            console.error('❌ Feladat állapot módosítási hiba:', error);
-            this.showNotification('Hiba történt a módosítás során!', 'error');
         }
-    }
 
-    openModal(taskId = null) {
-        console.log('📱 Modal megnyitása:', taskId || 'új feladat');
-        this.currentEditId = taskId;
-        
-        if (taskId) {
-            const task = this.tasks.find(t => t.id === taskId);
-            if (task && task.isShared) {
-                this.showNotification('Nem szerkesztheted a megosztott feladatokat!', 'error');
-                return;
-            }
-            this.modalTitle.textContent = 'Feladat szerkesztése';
-            this.fillForm(task);
-        } else {
-            this.modalTitle.textContent = 'Új feladat';
-            this.resetForm();
+        if (this.searchTerm) {
+            filtered = filtered.filter(task =>
+                task.title.toLowerCase().includes(this.searchTerm) ||
+                (task.description && task.description.toLowerCase().includes(this.searchTerm))
+            );
         }
-        
-        this.modal.classList.remove('hidden');
-        this.taskTitle.focus();
-    }
 
-    closeModal() {
-        console.log('❌ Modal bezárása');
-        this.modal.classList.add('hidden');
-        this.currentEditId = null;
-        this.resetForm();
-    }
-
-    fillForm(task) {
-        console.log('📝 Form kitöltése:', task.title);
-        this.taskTitle.value = task.title;
-        this.taskDescription.value = task.description || '';
-        this.taskPriority.value = task.priority;
-        this.taskCategory.value = task.category;
-        this.taskDate.value = task.dueDate || '';
-        this.taskTime.value = task.dueTime || '';
-        this.estimatedTime.value = task.estimatedTime || '';
-        this.taskType.value = task.type || 'private';
-    }
-
-    resetForm() {
-        console.log('🔄 Form alaphelyzetbe');
-        this.taskForm.reset();
-        this.taskDate.value = new Date().toISOString().split('T')[0];
-        this.taskType.value = 'private';
+        this.filteredTasks = filtered;
+        this.renderTasks();
     }
 
     renderTasks() {
-        const filteredTasks = this.getFilteredTasks();
-        console.log('🎨 Feladatok renderelése:', filteredTasks.length);
-
-        if (filteredTasks.length === 0) {
-            this.listView.innerHTML = `
+        console.log(`🎨 Feladatok renderelése: ${this.filteredTasks.length}`);
+        
+        if (this.filteredTasks.length === 0) {
+            this.elements.tasksList.innerHTML = `
                 <div class="empty-state">
-                    <h3>📝 Nincsenek feladatok</h3>
-                    <p>Hozz létre egy új feladatot a kezdéshez!</p>
-                    <button class="btn-primary" onclick="taskManager.openModal()">+ Első feladat létrehozása</button>
+                    <p>📝 Nincsenek feladatok</p>
+                    <p>Hozz létre egy újat a + gombbal!</p>
                 </div>
             `;
             return;
         }
 
-        this.listView.innerHTML = filteredTasks.map(task => `
-            <div class="task-item priority-${task.priority} ${task.completed ? 'completed' : ''} ${task.isShared ? 'shared-task' : ''}" 
-                 data-task-id="${task.id}">
-                <div class="task-header">
-                    <div>
-                        <div class="task-title">${this.escapeHtml(task.title)}</div>
-                        <div class="task-badges">
-                            <span class="task-category">${this.getCategoryLabel(task.category)}</span>
+        this.elements.tasksList.innerHTML = this.filteredTasks.map(task => `
+            <div class="task-item ${task.completed ? 'completed' : ''}" data-task-id="${task.id}">
+                <div class="task-content">
+                    <div class="task-header">
+                        <h3 class="task-title">${this.escapeHtml(task.title)}</h3>
+                        <div class="task-meta">
+                            <span class="priority priority-${task.priority || 'medium'}">${this.getPriorityText(task.priority)}</span>
+                            <span class="category">${this.getCategoryText(task.category)}</span>
                             ${task.type === 'shared' ? '<span class="shared-badge">👥 Megosztott</span>' : ''}
-                            ${task.isShared ? `<span class="received-badge">📩 ${task.sharedBy}</span>` : ''}
                         </div>
                     </div>
-                    <div class="task-actions">
-                        <button onclick="taskManager.toggleTaskComplete('${task.id}')" 
-                                title="${task.completed ? 'Visszavonás' : 'Befejezés'}">
-                            ${task.completed ? '↶' : '✓'}
-                        </button>
-                        ${!task.isShared ? `
-                            <button onclick="taskManager.openModal('${task.id}')" title="Szerkesztés">✏️</button>
-                            <button onclick="taskManager.deleteTask('${task.id}')" title="Törlés">🗑️</button>
-                        ` : `
-                            <span class="shared-info" title="Megosztott feladat - csak a tulajdonos szerkesztheti">🔒</span>
-                        `}
+                    ${task.description ? `<p class="task-description">${this.escapeHtml(task.description)}</p>` : ''}
+                    <div class="task-footer">
+                        <small class="task-date">
+                            Létrehozva: ${this.formatDate(task.createdAt)}
+                            ${task.updatedAt && task.updatedAt.toDate() > task.createdAt.toDate() ? 
+                                ` • Frissítve: ${this.formatDate(task.updatedAt)}` : ''}
+                        </small>
                     </div>
                 </div>
-                ${task.description ? `<div class="task-description">${this.escapeHtml(task.description)}</div>` : ''}
-                <div class="task-meta">
-                    <div>
-                        ${task.dueDate ? `<span class="task-date">📅 ${this.formatDate(task.dueDate)}</span>` : ''}
-                        ${task.dueTime ? `<span class="task-time">🕐 ${task.dueTime}</span>` : ''}
-                        ${task.estimatedTime ? `<span class="task-time">⏱️ ${task.estimatedTime} perc</span>` : ''}
-                    </div>
-                    <div class="task-priority-badge priority-${task.priority}">
-                        ${this.getPriorityLabel(task.priority)}
-                    </div>
+                <div class="task-actions">
+                    <button class="btn-icon complete-btn" onclick="taskManager.toggleTaskCompletion('${task.id}', ${task.completed})" 
+                            title="${task.completed ? 'Megnyitás' : 'Befejezés'}">
+                        ${task.completed ? '🔄' : '✅'}
+                    </button>
+                    ${task.type === 'own' ? `
+                        <button class="btn-icon edit-btn" onclick="taskManager.showTaskModal(${JSON.stringify(task).replace(/"/g, '&quot;')})" title="Szerkesztés">
+                            ✏️
+                        </button>
+                        <button class="btn-icon share-btn" onclick="collaborationManager.showShareModal('${task.id}')" title="Megosztás">
+                            👥
+                        </button>
+                        <button class="btn-icon delete-btn" onclick="taskManager.deleteTask('${task.id}')" title="Törlés">
+                            🗑️
+                        </button>
+                    ` : ''}
                 </div>
             </div>
         `).join('');
     }
 
-    getFilteredTasks() {
-        let filtered = [...this.tasks];
-
-        // Szűrés állapot szerint
-        switch (this.currentFilter) {
-            case 'pending':
-                filtered = filtered.filter(task => !task.completed);
-                break;
-            case 'completed':
-                filtered = filtered.filter(task => task.completed);
-                break;
-            case 'shared':
-                filtered = filtered.filter(task => task.type === 'shared' || task.isShared);
-                break;
-            case 'private':
-                filtered = filtered.filter(task => task.type === 'private' && !task.isShared);
-                break;
-        }
-
-        // Keresés
-        const searchTerm = this.searchInput.value.toLowerCase().trim();
-        if (searchTerm) {
-            filtered = filtered.filter(task => 
-                task.title.toLowerCase().includes(searchTerm) ||
-                (task.description && task.description.toLowerCase().includes(searchTerm))
-            );
-        }
-
-        // Rendezés
-        return filtered.sort((a, b) => {
-            if (a.completed !== b.completed) {
-                return a.completed ? 1 : -1;
-            }
-            const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 };
-            return priorityOrder[b.priority] - priorityOrder[a.priority];
-        });
-    }
-
-    setFilter(filter) {
-        console.log('🔍 Szűrő beállítása:', filter);
-        this.currentFilter = filter;
-        this.filterButtons.forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.filter === filter);
-        });
-        this.renderTasks();
-    }
-
-    toggleView() {
-        console.log('👁️ Nézet váltás');
-        this.currentView = this.currentView === 'list' ? 'calendar' : 'list';
-        this.viewToggle.textContent = this.currentView === 'list' ? '📅' : '📋';
-    }
-
     updateStats() {
-        const myTasks = this.tasks.filter(task => !task.isShared);
-        const totalTasks = myTasks.length;
-        const completedTasks = myTasks.filter(task => task.completed).length;
-        const pendingTasks = totalTasks - completedTasks;
+        const total = this.tasks.length;
+        const completed = this.tasks.filter(task => task.completed).length;
+        const pending = total - completed;
 
-        console.log('📊 Statisztika frissítés:', { totalTasks, completedTasks, pendingTasks });
+        this.elements.totalTasks.textContent = total;
+        this.elements.completedTasks.textContent = completed;
+        this.elements.pendingTasks.textContent = pending;
 
-        this.totalTasksEl.textContent = totalTasks;
-        this.completedTasksEl.textContent = completedTasks;
-        this.pendingTasksEl.textContent = pendingTasks;
+        console.log(`📊 Statisztika frissítés: {totalTasks: ${total}, completedTasks: ${completed}, pendingTasks: ${pending}}`);
     }
 
-    // Segédfunkciók
     escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
 
-    formatDate(dateStr) {
-        return new Date(dateStr).toLocaleDateString('hu-HU');
+    formatDate(timestamp) {
+        if (!timestamp) return 'Ismeretlen';
+        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+        return date.toLocaleDateString('hu-HU') + ' ' + date.toLocaleTimeString('hu-HU', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
     }
 
-    getPriorityLabel(priority) {
-        const labels = {
+    getPriorityText(priority) {
+        const priorities = {
             low: 'Alacsony',
             medium: 'Közepes',
-            high: 'Magas',
-            urgent: 'Sürgős'
+            high: 'Magas'
         };
-        return labels[priority] || priority;
+        return priorities[priority] || 'Közepes';
     }
 
-    getCategoryLabel(category) {
-        const labels = {
-            personal: 'Személyes',
+    getCategoryText(category) {
+        const categories = {
             work: 'Munka',
+            personal: 'Személyes',
             shopping: 'Bevásárlás',
             health: 'Egészség',
+            education: 'Tanulás',
             other: 'Egyéb'
         };
-        return labels[category] || category;
-    }
-
-    showNotification(message, type = 'success') {
-        console.log(`📢 TaskManager Notification (${type}):`, message);
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        notification.textContent = message;
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: ${type === 'error' ? '#F44336' : '#4CAF50'};
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-            z-index: 10000;
-            max-width: 300px;
-            font-weight: 500;
-        `;
-        document.body.appendChild(notification);
-        setTimeout(() => {
-            notification.style.animation = 'slideOut 0.3s ease';
-            setTimeout(() => notification.remove(), 300);
-        }, 3000);
+        return categories[category] || 'Egyéb';
     }
 }
+
 
 /* ===== PWA SERVICE WORKER REGISZTRÁLÁS ===== */
 async function registerServiceWorker() {
@@ -1021,3 +924,4 @@ animationStyles.textContent = `
     }
 `;
 document.head.appendChild(animationStyles);
+
