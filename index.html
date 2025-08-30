@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager</title>
+    
+    <!-- PWA manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Theme color -->
+    <meta name="theme-color" content="#2196F3">
+    
+    <!-- Apple specifikus -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Task Manager">
+</head>
+<body>
+    <!-- Header navigáció -->
+    <header class="header">
+        <h1>📋 Task Manager</h1>
+        <div class="header-controls">
+            <button id="view-toggle" class="btn-icon">📅</button>
+            <button id="add-task-btn" class="btn-primary">+ Új feladat</button>
+        </div>
+    </header>
+
+    <!-- Fő tartalom terület -->
+    <main class="main-content">
+        <!-- Szűrők és keresés -->
+        <section class="filters">
+            <div class="search-box">
+                <input type="text" id="search-input" placeholder="🔍 Keresés...">
+            </div>
+            <div class="filter-buttons">
+                <button class="filter-btn active" data-filter="all">Összes</button>
+                <button class="filter-btn" data-filter="pending">Függőben</button>
+                <button class="filter-btn" data-filter="completed">Kész</button>
+                <button class="filter-btn" data-filter="high">Sürgős</button>
+            </div>
+        </section>
+
+        <!-- Nézet váltó -->
+        <section class="view-section">
+            <div id="list-view" class="task-container">
+                <!-- Feladatok listája itt jelenik meg -->
+            </div>
+            
+            <div id="calendar-view" class="calendar-container hidden">
+                <!-- Naptár nézet -->
+                <div class="calendar-header">
+                    <button id="prev-month">‹</button>
+                    <h3 id="current-month"></h3>
+                    <button id="next-month">›</button>
+                </div>
+                <div id="calendar-grid"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal az új feladat hozzáadásához -->
+    <div id="task-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2 id="modal-title">Új feladat</h2>
+            
+            <form id="task-form">
+                <div class="form-group">
+                    <label for="task-title">Feladat neve *</label>
+                    <input type="text" id="task-title" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="task-description">Leírás</label>
+                    <textarea id="task-description" rows="3"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="task-priority">Prioritás</label>
+                        <select id="task-priority">
+                            <option value="low">Alacsony</option>
+                            <option value="medium" selected>Közepes</option>
+                            <option value="high">Magas</option>
+                            <option value="urgent">Sürgős</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="task-category">Kategória</label>
+                        <select id="task-category">
+                            <option value="personal">Személyes</option>
+                            <option value="work">Munka</option>
+                            <option value="shopping">Bevásárlás</option>
+                            <option value="health">Egészség</option>
+                            <option value="other">Egyéb</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="task-date">Határidő</label>
+                        <input type="date" id="task-date">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="task-time">Idő</label>
+                        <input type="time" id="task-time">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="estimated-time">Becsült időtartam (perc)</label>
+                    <input type="number" id="estimated-time" min="5" step="5">
+                </div>
+                
+                <!-- Részfeladatok -->
+                <div class="form-group">
+                    <label>Részfeladatok</label>
+                    <div id="subtasks-container">
+                        <!-- Részfeladatok dinamikusan jelennek meg itt -->
+                    </div>
+                    <button type="button" id="add-subtask" class="btn-secondary">+ Részfeladat</button>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="cancel-task">Mégse</button>
+                    <button type="submit" class="btn-primary">Mentés</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Statisztikák panel -->
+    <div id="stats-panel" class="stats-panel">
+        <h3>📊 Mai statisztikák</h3>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <span class="stat-number" id="total-tasks">0</span>
+                <span class="stat-label">Összes</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number" id="completed-tasks">0</span>
+                <span class="stat-label">Kész</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number" id="pending-tasks">0</span>
+                <span class="stat-label">Függőben</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number" id="time-spent">0</span>
+                <span class="stat-label">Perc</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>
