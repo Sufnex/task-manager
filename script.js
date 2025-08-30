@@ -19,6 +19,10 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
+provider.setCustomParameters({
+  prompt: 'select_account'
+});
+auth.useDeviceLanguage();
 console.log('✅ Firebase inicializálva:', app);
 
 // Globális változók
@@ -881,3 +885,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
   console.log('🚀 Multi-User Task Manager betöltve!');
 });
+
