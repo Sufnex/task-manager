@@ -1,11 +1,11 @@
 // Firebase konfiguráció
 const firebaseConfig = {
-    apiKey: "AIzaSyBN4nMdmcMUkzVELGGJy5Vg9SL2hPxLKuE",
-    authDomain: "task-manager-ca3a4.firebaseapp.com",
-    projectId: "task-manager-ca3a4",
-    storageBucket: "task-manager-ca3a4.firebasestorage.app",
-    messagingSenderId: "438057123",
-    appId: "1:438057123:web:b15b5e94a7b8f6d8c3a8d6"
+    apiKey: "AIzaSyAg93are7mqcCxpIsGxrFTIf0MhRjX8FXA",
+    authDomain: "task-manager-sb.firebaseapp.com",
+    projectId: "task-manager-sb",
+    storageBucket: "task-manager-sb.firebasestorage.app",
+    messagingSenderId: "845230301220",
+    appId: "1:845230301220:web:e4e45ca55ac66907e478b1"
 };
 
 // Firebase inicializálás
@@ -889,3 +889,4 @@ document.addEventListener('DOMContentLoaded', () => {
     
     console.log('🚀 Multi-User Task Manager betöltve!');
 });
+
